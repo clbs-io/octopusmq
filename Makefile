@@ -12,17 +12,17 @@ generate-protobuf:
 .PHONY: generate-grpc
 generate-grpc:
 	( \
-		mkdir -p pkg/grpcapipb && \
+		mkdir -p pkg/grpcpb && \
 		cd api/protobuf && \
 		protoc --proto_path=$(pwd) --go-grpc_out=../../pkg/grpcpb --go-grpc_opt=paths=source_relative  ./queues.proto \
 	)
 	( \
-		mkdir -p pkg/grpcmgmtapipb && \
+		mkdir -p pkg/grpcmgmpb && \
 		cd api/protobuf && \
 		protoc --proto_path=$(pwd) --go-grpc_out=../../pkg/grpcmgmtpb --go-grpc_opt=paths=source_relative  ./queues-management.proto \
 	)
 	( \
-		mkdir -p pkg/raftcommandsapipb && \
+		mkdir -p pkg/grpcraftcmdpb && \
 		cd api/protobuf && \
 		protoc --proto_path=$(pwd) --go-grpc_out=../../pkg/grpcraftcmdpb --go-grpc_opt=paths=source_relative  ./raftcommands.proto \
 	)
