@@ -1,0 +1,41 @@
+syntax = "proto3";
+package io.clbs.octopusmq.grpc;
+option go_package = "github.com/clbs-io/octopusmq/pkg/grpcpb";
+
+import "messages.proto";
+
+// The service represents main operations on the queues.
+service QueuesService {
+  // Push enques an item to the queue, if the queue is not full (queue has max size) or unless the timeout expires.
+  rpc Push(io.clbs.queues.protobuf.EnqueueRequest) returns (io.clbs.queues.protobuf.EnqueueResponse);
+
+  // Prepend adds an item to the head of the queue, if the queue is not full (queue has max size) or unless the timeout expires.
+  rpc Prepend(io.clbs.queues.protobuf.EnqueueRequest) returns (io.clbs.queues.protobuf.EnqueueResponse);
+
+  // PullSingle pulls a single item from the queue.
+  rpc PullSingle(io.clbs.queues.protobuf.PullSingleRequest) returns (io.clbs.queues.protobuf.PullSingleResponse);
+
+  // Pull pulls multiple items from the queue.
+  rpc Pull(io.clbs.queues.protobuf.PullRequest) returns (io.clbs.queues.protobuf.PullResponse);
+
+  // CommitSingle commits a single item.
+  rpc CommitSingle(io.clbs.queues.protobuf.CommitSingleRequest) returns (io.clbs.queues.protobuf.CommitSingleResponse);
+
+  // Commit commits multiple items.
+  rpc Commit(io.clbs.queues.protobuf.CommitRequest) returns (io.clbs.queues.protobuf.CommitResponse);
+
+  // RequeueSingle requeues a single item.
+  rpc RequeueSingle(io.clbs.queues.protobuf.RequeueSingleRequest) returns (io.clbs.queues.protobuf.RequeueSingleResponse);
+
+  // Requeue requeues multiple items.
+  rpc Requeue(io.clbs.queues.protobuf.RequeueRequest) returns (io.clbs.queues.protobuf.RequeueResponse);
+
+  // DeleteSingle deletes a single item.
+  rpc DeleteSingle(io.clbs.queues.protobuf.DeleteSingleRequest) returns (io.clbs.queues.protobuf.DeleteSingleResponse);
+
+  // Delete deletes multiple items.
+  rpc Delete(io.clbs.queues.protobuf.DeleteRequest) returns (io.clbs.queues.protobuf.DeleteResponse);
+
+  // Subscribe subscribes to the queue, currently doing pulling based on signal from client, see SubscribeRequest for more details.
+  rpc Subscribe(stream io.clbs.queues.protobuf.SubscribeRequest) returns (stream io.clbs.queues.protobuf.SubscribeResponse);
+}

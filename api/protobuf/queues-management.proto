@@ -1,0 +1,21 @@
+syntax = "proto3";
+package io.clbs.octopusmq.grpc.management;
+option go_package = "github.com/clbs-io/octopusmq/pkg/grpcmgmtpb";
+
+import "google/protobuf/empty.proto";
+import "messages.proto";
+
+// The service represents management on the queues.
+service ManagementService {
+  // CreateQueue creates a new queue. The named queue starts immediately.
+  // If the queue already exists, the operation fails.
+  rpc CreateQueue(io.clbs.queues.protobuf.CreateQueueRequest) returns (google.protobuf.Empty);
+  // DeleteQueue deletes the queue. If the queue does not exist, the operation fails.
+  rpc DeleteQueue(io.clbs.queues.protobuf.DeleteQueueRequest) returns (google.protobuf.Empty);
+  // ListQueues lists all queues defined on the server side.
+  rpc ListQueues(google.protobuf.Empty) returns (io.clbs.queues.protobuf.ListQueuesResponse);
+  // PauseQueue pauses the queue. If the queue does not exist, the operation fails. If the queue is already paused, the operation does nothing.
+  rpc PauseQueue(io.clbs.queues.protobuf.PauseQueueRequest) returns (google.protobuf.Empty);
+  // ResumeQueue resumes the queue. If the queue does not exist, the operation fails. If the queue is already running, the operation does nothing.
+  rpc ResumeQueue(io.clbs.queues.protobuf.ResumeQueueRequest) returns (google.protobuf.Empty);
+}

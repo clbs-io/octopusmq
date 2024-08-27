@@ -1,0 +1,53 @@
+syntax = "proto3";
+package io.clbs.octopusmq.grpc;
+option go_package = "github.com/clbs-io/octopusmq/pkg/grpcrafcmdpb";
+
+import "messages.proto";
+
+message RaftCommand {
+    oneof command {
+        io.clbs.queues.protobuf.CreateQueueRequest createqueue = 1;
+        io.clbs.queues.protobuf.DeleteQueueRequest deletequeue = 2;
+        RaftPauseResumeQueue pauseresumequeue = 3;
+
+        // internal storage commands
+        RaftStorageCommands storagecommands = 4;
+      }
+}
+
+message RaftPauseResumeQueue {
+    string queueName = 1;
+    bool pause = 2;
+}
+
+message RaftStorageCommands {
+    string queueName = 1;
+    repeated RaftStorageCommand commands = 2;
+}
+
+message RaftStorageCommand {
+    oneof command {
+        RaftStorageDelete delete = 1;
+        RaftStorageInsert insert = 2;
+        RaftStorageFlags flags = 3;
+    }
+}
+
+message RaftStorageDelete {
+    uint64 id = 1;
+}
+
+message RaftStorageInsert {
+    uint64 id = 1;
+    uint32 priority = 2;
+    uint32 flags = 3;
+    uint64 hash = 4;
+    bytes key = 5;
+    bytes value = 6;
+}
+
+message RaftStorageFlags {
+    uint64 id = 1;
+    uint32 flags = 2;
+    uint32 mask = 3;
+}
