@@ -1,6 +1,6 @@
 syntax = "proto3";
 package io.clbs.octopusmq.grpc.raftcmd;
-option go_package = "github.com/clbs-io/octopusmq/pkg/grpcrafcmdpb";
+option go_package = "github.com/clbs-io/octopusmq/pkg/grpcraftcmdpb";
 
 import "messages.proto";
 
