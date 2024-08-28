@@ -1,13 +1,13 @@
 syntax = "proto3";
-package io.clbs.octopusmq.grpc;
+package io.clbs.octopusmq.grpc.raftcmd;
 option go_package = "github.com/clbs-io/octopusmq/pkg/grpcrafcmdpb";
 
 import "messages.proto";
 
 message RaftCommand {
     oneof command {
-        io.clbs.queues.protobuf.CreateQueueRequest createqueue = 1;
-        io.clbs.queues.protobuf.DeleteQueueRequest deletequeue = 2;
+        io.clbs.octopusmq.protobuf.CreateQueueRequest createqueue = 1;
+        io.clbs.octopusmq.protobuf.DeleteQueueRequest deletequeue = 2;
         RaftPauseResumeQueue pauseresumequeue = 3;
 
         // internal storage commands
