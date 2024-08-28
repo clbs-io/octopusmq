@@ -9,13 +9,13 @@ import "messages.proto";
 service ManagementService {
   // CreateQueue creates a new queue. The named queue starts immediately.
   // If the queue already exists, the operation fails.
-  rpc CreateQueue(io.clbs.queues.protobuf.CreateQueueRequest) returns (google.protobuf.Empty);
+  rpc CreateQueue(io.clbs.octopusmq.protobuf.CreateQueueRequest) returns (google.protobuf.Empty);
   // DeleteQueue deletes the queue. If the queue does not exist, the operation fails.
-  rpc DeleteQueue(io.clbs.queues.protobuf.DeleteQueueRequest) returns (google.protobuf.Empty);
+  rpc DeleteQueue(io.clbs.octopusmq.protobuf.DeleteQueueRequest) returns (google.protobuf.Empty);
   // ListQueues lists all queues defined on the server side.
-  rpc ListQueues(google.protobuf.Empty) returns (io.clbs.queues.protobuf.ListQueuesResponse);
+  rpc ListQueues(google.protobuf.Empty) returns (io.clbs.octopusmq.protobuf.ListQueuesResponse);
   // PauseQueue pauses the queue. If the queue does not exist, the operation fails. If the queue is already paused, the operation does nothing.
-  rpc PauseQueue(io.clbs.queues.protobuf.PauseQueueRequest) returns (google.protobuf.Empty);
+  rpc PauseQueue(io.clbs.octopusmq.protobuf.PauseQueueRequest) returns (google.protobuf.Empty);
   // ResumeQueue resumes the queue. If the queue does not exist, the operation fails. If the queue is already running, the operation does nothing.
-  rpc ResumeQueue(io.clbs.queues.protobuf.ResumeQueueRequest) returns (google.protobuf.Empty);
+  rpc ResumeQueue(io.clbs.octopusmq.protobuf.ResumeQueueRequest) returns (google.protobuf.Empty);
 }
