@@ -6,13 +6,18 @@ import "messages.proto";
 
 message RaftCommand {
     oneof command {
-        io.clbs.octopusmq.protobuf.CreateQueueRequest createqueue = 1;
+        RaftCreateQueue createqueue = 1;
         io.clbs.octopusmq.protobuf.DeleteQueueRequest deletequeue = 2;
         RaftPauseResumeQueue pauseresumequeue = 3;
 
         // internal storage commands
         RaftStorageCommands storagecommands = 4;
       }
+}
+
+message RaftCreateQueue {
+    uint32 id = 1;
+    io.clbs.octopusmq.protobuf.CreateQueueRequest queue = 2;
 }
 
 message RaftPauseResumeQueue {
@@ -22,7 +27,8 @@ message RaftPauseResumeQueue {
 
 message RaftStorageCommands {
     string queueName = 1;
-    repeated RaftStorageCommand commands = 2;
+    uint32 id = 2;
+    repeated RaftStorageCommand commands = 3;
 }
 
 message RaftStorageCommand {
