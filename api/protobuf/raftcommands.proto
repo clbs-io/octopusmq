@@ -13,6 +13,7 @@ message RaftCommand {
 
         // internal storage commands
         RaftStorageCommands storagecommands = 5;
+        RaftStorageDeleteIds storagedeleteids = 6;
       }
 }
 
@@ -37,6 +38,10 @@ message RaftStorageCommands {
     repeated RaftStorageCommand commands = 3;
 }
 
+message RaftStorageDeleteIds {
+    repeated uint64 ids = 1;
+}
+
 message RaftStorageCommand {
     oneof command {
         RaftStorageDelete delete = 1;
@@ -46,7 +51,7 @@ message RaftStorageCommand {
 }
 
 message RaftStorageDelete {
-    repeated uint64 id = 1;
+    uint64 id = 1;
 }
 
 message RaftStorageInsert {
