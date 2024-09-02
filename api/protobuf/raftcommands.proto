@@ -16,7 +16,7 @@ message RaftCommand {
 }
 
 message RaftCreateQueue {
-    uint32 id = 1;
+    uint32 queueid = 1;
     io.clbs.octopusmq.protobuf.CreateQueueRequest queue = 2;
 }
 
@@ -40,7 +40,7 @@ message RaftStorageCommand {
 }
 
 message RaftStorageDelete {
-    uint64 id = 1;
+    repeated uint64 id = 1;
 }
 
 message RaftStorageInsert {
