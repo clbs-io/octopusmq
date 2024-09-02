@@ -27,7 +27,8 @@ message RaftPauseResumeQueue {
 }
 
 message RaftPurgeQueue {
-    string queueName = 1;
+    bool all = 1;
+    repeated string queueName = 2;
 }
 
 message RaftStorageCommands {
