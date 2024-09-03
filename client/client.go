@@ -3,6 +3,7 @@ package client
 import (
 	"context"
 	"errors"
+
 	"github.com/clbs-io/octopusmq/pkg/grpcmgmtpb"
 	"google.golang.org/protobuf/types/known/emptypb"
 
@@ -78,12 +79,7 @@ func (c *Client) Delete(ctx context.Context, req *pb.DeleteRequest, opts ...grpc
 }
 
 func (c *Client) Subscribe(ctx context.Context, opts ...grpc.CallOption) (*Subscriber, error) {
-	grpcSub, grpcSubErr := c.svcClient.Subscribe(ctx, opts...)
-	sub := &Subscriber{
-		grpcSubscriber: grpcSub,
-	}
-
-	return sub, grpcSubErr
+	panic("not implemented")
 }
 
 func (c *Client) Close() error {

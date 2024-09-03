@@ -13,10 +13,6 @@ type Subscriber struct {
 	grpcSubscriber grpcpb.QueuesService_SubscribeClient
 }
 
-func (sub *Subscriber) Send(m *pb.SubscribeRequest) error {
-	return sub.grpcSubscriber.Send(m)
-}
-
 func (sub *Subscriber) Recv() (*pb.SubscribeResponse, error) {
 	return sub.grpcSubscriber.Recv()
 }

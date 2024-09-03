@@ -129,30 +129,11 @@ message DeleteResponse {
   int32 ret = 1;
 }
 
-// SubscribeRequest message contains one of the following messages: CommitSubscribed, RollbackSubscribed, RequestSubscribed.
+// SubscribeRequest message, register a streamed receiver for particular queue.
 message SubscribeRequest {
   // The name of the queue.
   string queueName = 1;
-  oneof subscribe {
-    CommitSubscribed commit = 2;
-    RollbackSubscribed rollback = 3;
-    RequestSubscribed request = 4;
-  }
-}
-
-// CommitSubscribed message contains an array of item IDs to commit.
-message CommitSubscribed {
-  repeated uint64 ids = 1;
-}
-
-// RollbackSubscribed message contains an array of item IDs to rollback.
-message RollbackSubscribed {
-  repeated uint64 ids = 1;
-}
-
-// RequestSubscribed message contains the batch size of items to pull.
-message RequestSubscribed {
-  int32 batchSize = 1;
+  uint32 batchSize = 2;
 }
 
 // SubscribeResponse message contains an array of items pulled from the queue.
