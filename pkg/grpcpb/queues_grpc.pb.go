@@ -60,7 +60,7 @@ type QueuesServiceClient interface {
 	// Delete deletes multiple items.
 	Delete(ctx context.Context, in *protobuf.DeleteRequest, opts ...grpc.CallOption) (*protobuf.DeleteResponse, error)
 	// Subscribe subscribes to the queue, currently doing pulling based on signal from client, see SubscribeRequest for more details.
-	Subscribe(ctx context.Context, in *protobuf.SubscribeRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[protobuf.SubscribeResponse], error)
+	Subscribe(ctx context.Context, opts ...grpc.CallOption) (grpc.BidiStreamingClient[protobuf.SubscribeRequest, protobuf.SubscribeResponse], error)
 }
 
 type queuesServiceClient struct {
@@ -171,24 +171,18 @@ func (c *queuesServiceClient) Delete(ctx context.Context, in *protobuf.DeleteReq
 	return out, nil
 }
 
-func (c *queuesServiceClient) Subscribe(ctx context.Context, in *protobuf.SubscribeRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[protobuf.SubscribeResponse], error) {
+func (c *queuesServiceClient) Subscribe(ctx context.Context, opts ...grpc.CallOption) (grpc.BidiStreamingClient[protobuf.SubscribeRequest, protobuf.SubscribeResponse], error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	stream, err := c.cc.NewStream(ctx, &QueuesService_ServiceDesc.Streams[0], QueuesService_Subscribe_FullMethodName, cOpts...)
 	if err != nil {
 		return nil, err
 	}
 	x := &grpc.GenericClientStream[protobuf.SubscribeRequest, protobuf.SubscribeResponse]{ClientStream: stream}
-	if err := x.ClientStream.SendMsg(in); err != nil {
-		return nil, err
-	}
-	if err := x.ClientStream.CloseSend(); err != nil {
-		return nil, err
-	}
 	return x, nil
 }
 
 // This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
-type QueuesService_SubscribeClient = grpc.ServerStreamingClient[protobuf.SubscribeResponse]
+type QueuesService_SubscribeClient = grpc.BidiStreamingClient[protobuf.SubscribeRequest, protobuf.SubscribeResponse]
 
 // QueuesServiceServer is the server API for QueuesService service.
 // All implementations must embed UnimplementedQueuesServiceServer
@@ -217,7 +211,7 @@ type QueuesServiceServer interface {
 	// Delete deletes multiple items.
 	Delete(context.Context, *protobuf.DeleteRequest) (*protobuf.DeleteResponse, error)
 	// Subscribe subscribes to the queue, currently doing pulling based on signal from client, see SubscribeRequest for more details.
-	Subscribe(*protobuf.SubscribeRequest, grpc.ServerStreamingServer[protobuf.SubscribeResponse]) error
+	Subscribe(grpc.BidiStreamingServer[protobuf.SubscribeRequest, protobuf.SubscribeResponse]) error
 	mustEmbedUnimplementedQueuesServiceServer()
 }
 
@@ -258,7 +252,7 @@ func (UnimplementedQueuesServiceServer) DeleteSingle(context.Context, *protobuf.
 func (UnimplementedQueuesServiceServer) Delete(context.Context, *protobuf.DeleteRequest) (*protobuf.DeleteResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Delete not implemented")
 }
-func (UnimplementedQueuesServiceServer) Subscribe(*protobuf.SubscribeRequest, grpc.ServerStreamingServer[protobuf.SubscribeResponse]) error {
+func (UnimplementedQueuesServiceServer) Subscribe(grpc.BidiStreamingServer[protobuf.SubscribeRequest, protobuf.SubscribeResponse]) error {
 	return status.Errorf(codes.Unimplemented, "method Subscribe not implemented")
 }
 func (UnimplementedQueuesServiceServer) mustEmbedUnimplementedQueuesServiceServer() {}
@@ -463,15 +457,11 @@ func _QueuesService_Delete_Handler(srv interface{}, ctx context.Context, dec fun
 }
 
 func _QueuesService_Subscribe_Handler(srv interface{}, stream grpc.ServerStream) error {
-	m := new(protobuf.SubscribeRequest)
-	if err := stream.RecvMsg(m); err != nil {
-		return err
-	}
-	return srv.(QueuesServiceServer).Subscribe(m, &grpc.GenericServerStream[protobuf.SubscribeRequest, protobuf.SubscribeResponse]{ServerStream: stream})
+	return srv.(QueuesServiceServer).Subscribe(&grpc.GenericServerStream[protobuf.SubscribeRequest, protobuf.SubscribeResponse]{ServerStream: stream})
 }
 
 // This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
-type QueuesService_SubscribeServer = grpc.ServerStreamingServer[protobuf.SubscribeResponse]
+type QueuesService_SubscribeServer = grpc.BidiStreamingServer[protobuf.SubscribeRequest, protobuf.SubscribeResponse]
 
 // QueuesService_ServiceDesc is the grpc.ServiceDesc for QueuesService service.
 // It's only intended for direct use with grpc.RegisterService,
@@ -526,6 +516,7 @@ var QueuesService_ServiceDesc = grpc.ServiceDesc{
 			StreamName:    "Subscribe",
 			Handler:       _QueuesService_Subscribe_Handler,
 			ServerStreams: true,
+			ClientStreams: true,
 		},
 	},
 	Metadata: "queues.proto",

@@ -37,5 +37,5 @@ service QueuesService {
   rpc Delete(io.clbs.octopusmq.protobuf.DeleteRequest) returns (io.clbs.octopusmq.protobuf.DeleteResponse);
 
   // Subscribe subscribes to the queue, currently doing pulling based on signal from client, see SubscribeRequest for more details.
-  rpc Subscribe(io.clbs.octopusmq.protobuf.SubscribeRequest) returns (stream io.clbs.octopusmq.protobuf.SubscribeResponse);
+  rpc Subscribe(stream io.clbs.octopusmq.protobuf.SubscribeRequest) returns (stream io.clbs.octopusmq.protobuf.SubscribeResponse);
 }
