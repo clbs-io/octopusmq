@@ -146,6 +146,7 @@ message SubscribeRequestStart {
 message SubscribeRequestResponse {
   bool eof = 1;
   repeated uint64 commit = 2;
+  repeated uint64 requeue = 3;
 }
 
 // SubscribeResponse message contains an array of items pulled from the queue.
