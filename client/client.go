@@ -2,7 +2,8 @@ package client
 
 import (
 	"context"
-	"errors"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 
 	"github.com/clbs-io/octopusmq/pkg/grpcmgmtpb"
 	"google.golang.org/protobuf/types/known/emptypb"
@@ -90,8 +91,15 @@ func (c *Client) Close() error {
 
 func (c *Client) EnsureQueue(ctx context.Context, req *pb.CreateQueueRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
 	res, err := c.mgmtClient.CreateQueue(ctx, req, opts...)
-	if errors.Is(err, ErrQueueAlreadyExists) {
-		// we suppress the error and return
+
+	if err == nil {
+		return res, nil
+	}
+
+	st := status.Convert(err)
+
+	// suppress the error and return
+	if st.Code() == codes.AlreadyExists {
 		return res, nil
 	}
 
