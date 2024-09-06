@@ -9,6 +9,9 @@ service QueuesService {
   // Push enques an item to the queue, if the queue is not full (queue has max size) or unless the timeout expires.
   rpc Push(io.clbs.octopusmq.protobuf.EnqueueRequest) returns (io.clbs.octopusmq.protobuf.EnqueueResponse);
 
+  // PushSubscribe enques an item to the queue and subscribes to the queue, if the queue is not full (queue has max size) or unless the timeout expires.
+  rpc PushSubscribe(stream io.clbs.octopusmq.protobuf.PushSubscribeRequest) returns (stream io.clbs.octopusmq.protobuf.EnqueueResponse);
+
   // Prepend adds an item to the head of the queue, if the queue is not full (queue has max size) or unless the timeout expires.
   rpc Prepend(io.clbs.octopusmq.protobuf.EnqueueRequest) returns (io.clbs.octopusmq.protobuf.EnqueueResponse);
 

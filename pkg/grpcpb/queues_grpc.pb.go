@@ -21,6 +21,7 @@ const _ = grpc.SupportPackageIsVersion9
 
 const (
 	QueuesService_Push_FullMethodName          = "/io.clbs.octopusmq.grpc.QueuesService/Push"
+	QueuesService_PushSubscribe_FullMethodName = "/io.clbs.octopusmq.grpc.QueuesService/PushSubscribe"
 	QueuesService_Prepend_FullMethodName       = "/io.clbs.octopusmq.grpc.QueuesService/Prepend"
 	QueuesService_PullSingle_FullMethodName    = "/io.clbs.octopusmq.grpc.QueuesService/PullSingle"
 	QueuesService_Pull_FullMethodName          = "/io.clbs.octopusmq.grpc.QueuesService/Pull"
@@ -41,6 +42,8 @@ const (
 type QueuesServiceClient interface {
 	// Push enques an item to the queue, if the queue is not full (queue has max size) or unless the timeout expires.
 	Push(ctx context.Context, in *protobuf.EnqueueRequest, opts ...grpc.CallOption) (*protobuf.EnqueueResponse, error)
+	// PushSubscribe enques an item to the queue and subscribes to the queue, if the queue is not full (queue has max size) or unless the timeout expires.
+	PushSubscribe(ctx context.Context, opts ...grpc.CallOption) (grpc.BidiStreamingClient[protobuf.PushSubscribeRequest, protobuf.EnqueueResponse], error)
 	// Prepend adds an item to the head of the queue, if the queue is not full (queue has max size) or unless the timeout expires.
 	Prepend(ctx context.Context, in *protobuf.EnqueueRequest, opts ...grpc.CallOption) (*protobuf.EnqueueResponse, error)
 	// PullSingle pulls a single item from the queue.
@@ -80,6 +83,19 @@ func (c *queuesServiceClient) Push(ctx context.Context, in *protobuf.EnqueueRequ
 	}
 	return out, nil
 }
+
+func (c *queuesServiceClient) PushSubscribe(ctx context.Context, opts ...grpc.CallOption) (grpc.BidiStreamingClient[protobuf.PushSubscribeRequest, protobuf.EnqueueResponse], error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	stream, err := c.cc.NewStream(ctx, &QueuesService_ServiceDesc.Streams[0], QueuesService_PushSubscribe_FullMethodName, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &grpc.GenericClientStream[protobuf.PushSubscribeRequest, protobuf.EnqueueResponse]{ClientStream: stream}
+	return x, nil
+}
+
+// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
+type QueuesService_PushSubscribeClient = grpc.BidiStreamingClient[protobuf.PushSubscribeRequest, protobuf.EnqueueResponse]
 
 func (c *queuesServiceClient) Prepend(ctx context.Context, in *protobuf.EnqueueRequest, opts ...grpc.CallOption) (*protobuf.EnqueueResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
@@ -173,7 +189,7 @@ func (c *queuesServiceClient) Delete(ctx context.Context, in *protobuf.DeleteReq
 
 func (c *queuesServiceClient) Subscribe(ctx context.Context, opts ...grpc.CallOption) (grpc.BidiStreamingClient[protobuf.SubscribeRequest, protobuf.SubscribeResponse], error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	stream, err := c.cc.NewStream(ctx, &QueuesService_ServiceDesc.Streams[0], QueuesService_Subscribe_FullMethodName, cOpts...)
+	stream, err := c.cc.NewStream(ctx, &QueuesService_ServiceDesc.Streams[1], QueuesService_Subscribe_FullMethodName, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -192,6 +208,8 @@ type QueuesService_SubscribeClient = grpc.BidiStreamingClient[protobuf.Subscribe
 type QueuesServiceServer interface {
 	// Push enques an item to the queue, if the queue is not full (queue has max size) or unless the timeout expires.
 	Push(context.Context, *protobuf.EnqueueRequest) (*protobuf.EnqueueResponse, error)
+	// PushSubscribe enques an item to the queue and subscribes to the queue, if the queue is not full (queue has max size) or unless the timeout expires.
+	PushSubscribe(grpc.BidiStreamingServer[protobuf.PushSubscribeRequest, protobuf.EnqueueResponse]) error
 	// Prepend adds an item to the head of the queue, if the queue is not full (queue has max size) or unless the timeout expires.
 	Prepend(context.Context, *protobuf.EnqueueRequest) (*protobuf.EnqueueResponse, error)
 	// PullSingle pulls a single item from the queue.
@@ -224,6 +242,9 @@ type UnimplementedQueuesServiceServer struct{}
 
 func (UnimplementedQueuesServiceServer) Push(context.Context, *protobuf.EnqueueRequest) (*protobuf.EnqueueResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Push not implemented")
+}
+func (UnimplementedQueuesServiceServer) PushSubscribe(grpc.BidiStreamingServer[protobuf.PushSubscribeRequest, protobuf.EnqueueResponse]) error {
+	return status.Errorf(codes.Unimplemented, "method PushSubscribe not implemented")
 }
 func (UnimplementedQueuesServiceServer) Prepend(context.Context, *protobuf.EnqueueRequest) (*protobuf.EnqueueResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Prepend not implemented")
@@ -293,6 +314,13 @@ func _QueuesService_Push_Handler(srv interface{}, ctx context.Context, dec func(
 	}
 	return interceptor(ctx, in, info, handler)
 }
+
+func _QueuesService_PushSubscribe_Handler(srv interface{}, stream grpc.ServerStream) error {
+	return srv.(QueuesServiceServer).PushSubscribe(&grpc.GenericServerStream[protobuf.PushSubscribeRequest, protobuf.EnqueueResponse]{ServerStream: stream})
+}
+
+// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
+type QueuesService_PushSubscribeServer = grpc.BidiStreamingServer[protobuf.PushSubscribeRequest, protobuf.EnqueueResponse]
 
 func _QueuesService_Prepend_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(protobuf.EnqueueRequest)
@@ -512,6 +540,12 @@ var QueuesService_ServiceDesc = grpc.ServiceDesc{
 		},
 	},
 	Streams: []grpc.StreamDesc{
+		{
+			StreamName:    "PushSubscribe",
+			Handler:       _QueuesService_PushSubscribe_Handler,
+			ServerStreams: true,
+			ClientStreams: true,
+		},
 		{
 			StreamName:    "Subscribe",
 			Handler:       _QueuesService_Subscribe_Handler,

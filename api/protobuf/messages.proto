@@ -27,6 +27,22 @@ message EnqueueRequest {
   google.protobuf.Duration timeout = 3;
 }
 
+message PushSubscribeRequest {
+  oneof subreq {
+    PushSuscribeRequestStart start = 1;
+    PushSubscribeRequestItem item = 2;
+  }
+}
+
+message PushSuscribeRequestStart {
+  string queueName = 1;
+  google.protobuf.Duration timeout = 2;
+}
+
+message PushSubscribeRequestItem {
+  Item item = 1;
+}
+
 // EnqueueResponse sends back only item ID
 message EnqueueResponse {
   uint64 id = 1;
