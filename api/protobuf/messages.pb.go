@@ -216,7 +216,7 @@ func (m *PushSubscribeRequest) GetSubreq() isPushSubscribeRequest_Subreq {
 	return nil
 }
 
-func (x *PushSubscribeRequest) GetStart() *PushSuscribeRequestStart {
+func (x *PushSubscribeRequest) GetStart() *PushSubcribeRequestStart {
 	if x, ok := x.GetSubreq().(*PushSubscribeRequest_Start); ok {
 		return x.Start
 	}
@@ -235,7 +235,7 @@ type isPushSubscribeRequest_Subreq interface {
 }
 
 type PushSubscribeRequest_Start struct {
-	Start *PushSuscribeRequestStart `protobuf:"bytes,1,opt,name=start,proto3,oneof"`
+	Start *PushSubcribeRequestStart `protobuf:"bytes,1,opt,name=start,proto3,oneof"`
 }
 
 type PushSubscribeRequest_Item struct {
@@ -246,7 +246,7 @@ func (*PushSubscribeRequest_Start) isPushSubscribeRequest_Subreq() {}
 
 func (*PushSubscribeRequest_Item) isPushSubscribeRequest_Subreq() {}
 
-type PushSuscribeRequestStart struct {
+type PushSubcribeRequestStart struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
@@ -255,8 +255,8 @@ type PushSuscribeRequestStart struct {
 	Timeout   *durationpb.Duration `protobuf:"bytes,2,opt,name=timeout,proto3" json:"timeout,omitempty"`
 }
 
-func (x *PushSuscribeRequestStart) Reset() {
-	*x = PushSuscribeRequestStart{}
+func (x *PushSubcribeRequestStart) Reset() {
+	*x = PushSubcribeRequestStart{}
 	if protoimpl.UnsafeEnabled {
 		mi := &file_messages_proto_msgTypes[3]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -264,13 +264,13 @@ func (x *PushSuscribeRequestStart) Reset() {
 	}
 }
 
-func (x *PushSuscribeRequestStart) String() string {
+func (x *PushSubcribeRequestStart) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*PushSuscribeRequestStart) ProtoMessage() {}
+func (*PushSubcribeRequestStart) ProtoMessage() {}
 
-func (x *PushSuscribeRequestStart) ProtoReflect() protoreflect.Message {
+func (x *PushSubcribeRequestStart) ProtoReflect() protoreflect.Message {
 	mi := &file_messages_proto_msgTypes[3]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -282,19 +282,19 @@ func (x *PushSuscribeRequestStart) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use PushSuscribeRequestStart.ProtoReflect.Descriptor instead.
-func (*PushSuscribeRequestStart) Descriptor() ([]byte, []int) {
+// Deprecated: Use PushSubcribeRequestStart.ProtoReflect.Descriptor instead.
+func (*PushSubcribeRequestStart) Descriptor() ([]byte, []int) {
 	return file_messages_proto_rawDescGZIP(), []int{3}
 }
 
-func (x *PushSuscribeRequestStart) GetQueueName() string {
+func (x *PushSubcribeRequestStart) GetQueueName() string {
 	if x != nil {
 		return x.QueueName
 	}
 	return ""
 }
 
-func (x *PushSuscribeRequestStart) GetTimeout() *durationpb.Duration {
+func (x *PushSubcribeRequestStart) GetTimeout() *durationpb.Duration {
 	if x != nil {
 		return x.Timeout
 	}
@@ -1866,7 +1866,7 @@ var file_messages_proto_rawDesc = []byte{
 	0x62, 0x65, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x12, 0x4c, 0x0a, 0x05, 0x73, 0x74, 0x61,
 	0x72, 0x74, 0x18, 0x01, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x34, 0x2e, 0x69, 0x6f, 0x2e, 0x63, 0x6c,
 	0x62, 0x73, 0x2e, 0x6f, 0x63, 0x74, 0x6f, 0x70, 0x75, 0x73, 0x6d, 0x71, 0x2e, 0x70, 0x72, 0x6f,
-	0x74, 0x6f, 0x62, 0x75, 0x66, 0x2e, 0x50, 0x75, 0x73, 0x68, 0x53, 0x75, 0x73, 0x63, 0x72, 0x69,
+	0x74, 0x6f, 0x62, 0x75, 0x66, 0x2e, 0x50, 0x75, 0x73, 0x68, 0x53, 0x75, 0x62, 0x63, 0x72, 0x69,
 	0x62, 0x65, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x53, 0x74, 0x61, 0x72, 0x74, 0x48, 0x00,
 	0x52, 0x05, 0x73, 0x74, 0x61, 0x72, 0x74, 0x12, 0x4a, 0x0a, 0x04, 0x69, 0x74, 0x65, 0x6d, 0x18,
 	0x02, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x34, 0x2e, 0x69, 0x6f, 0x2e, 0x63, 0x6c, 0x62, 0x73, 0x2e,
@@ -1874,7 +1874,7 @@ var file_messages_proto_rawDesc = []byte{
 	0x75, 0x66, 0x2e, 0x50, 0x75, 0x73, 0x68, 0x53, 0x75, 0x62, 0x73, 0x63, 0x72, 0x69, 0x62, 0x65,
 	0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x49, 0x74, 0x65, 0x6d, 0x48, 0x00, 0x52, 0x04, 0x69,
 	0x74, 0x65, 0x6d, 0x42, 0x08, 0x0a, 0x06, 0x73, 0x75, 0x62, 0x72, 0x65, 0x71, 0x22, 0x6d, 0x0a,
-	0x18, 0x50, 0x75, 0x73, 0x68, 0x53, 0x75, 0x73, 0x63, 0x72, 0x69, 0x62, 0x65, 0x52, 0x65, 0x71,
+	0x18, 0x50, 0x75, 0x73, 0x68, 0x53, 0x75, 0x62, 0x63, 0x72, 0x69, 0x62, 0x65, 0x52, 0x65, 0x71,
 	0x75, 0x65, 0x73, 0x74, 0x53, 0x74, 0x61, 0x72, 0x74, 0x12, 0x1c, 0x0a, 0x09, 0x71, 0x75, 0x65,
 	0x75, 0x65, 0x4e, 0x61, 0x6d, 0x65, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x09, 0x71, 0x75,
 	0x65, 0x75, 0x65, 0x4e, 0x61, 0x6d, 0x65, 0x12, 0x33, 0x0a, 0x07, 0x74, 0x69, 0x6d, 0x65, 0x6f,
@@ -2035,7 +2035,7 @@ var file_messages_proto_goTypes = []any{
 	(*Item)(nil),                     // 0: io.clbs.octopusmq.protobuf.Item
 	(*EnqueueRequest)(nil),           // 1: io.clbs.octopusmq.protobuf.EnqueueRequest
 	(*PushSubscribeRequest)(nil),     // 2: io.clbs.octopusmq.protobuf.PushSubscribeRequest
-	(*PushSuscribeRequestStart)(nil), // 3: io.clbs.octopusmq.protobuf.PushSuscribeRequestStart
+	(*PushSubcribeRequestStart)(nil), // 3: io.clbs.octopusmq.protobuf.PushSubcribeRequestStart
 	(*PushSubscribeRequestItem)(nil), // 4: io.clbs.octopusmq.protobuf.PushSubscribeRequestItem
 	(*EnqueueResponse)(nil),          // 5: io.clbs.octopusmq.protobuf.EnqueueResponse
 	(*PullSingleRequest)(nil),        // 6: io.clbs.octopusmq.protobuf.PullSingleRequest
@@ -2069,9 +2069,9 @@ var file_messages_proto_goTypes = []any{
 var file_messages_proto_depIdxs = []int32{
 	0,  // 0: io.clbs.octopusmq.protobuf.EnqueueRequest.item:type_name -> io.clbs.octopusmq.protobuf.Item
 	32, // 1: io.clbs.octopusmq.protobuf.EnqueueRequest.timeout:type_name -> google.protobuf.Duration
-	3,  // 2: io.clbs.octopusmq.protobuf.PushSubscribeRequest.start:type_name -> io.clbs.octopusmq.protobuf.PushSuscribeRequestStart
+	3,  // 2: io.clbs.octopusmq.protobuf.PushSubscribeRequest.start:type_name -> io.clbs.octopusmq.protobuf.PushSubcribeRequestStart
 	4,  // 3: io.clbs.octopusmq.protobuf.PushSubscribeRequest.item:type_name -> io.clbs.octopusmq.protobuf.PushSubscribeRequestItem
-	32, // 4: io.clbs.octopusmq.protobuf.PushSuscribeRequestStart.timeout:type_name -> google.protobuf.Duration
+	32, // 4: io.clbs.octopusmq.protobuf.PushSubcribeRequestStart.timeout:type_name -> google.protobuf.Duration
 	0,  // 5: io.clbs.octopusmq.protobuf.PushSubscribeRequestItem.item:type_name -> io.clbs.octopusmq.protobuf.Item
 	32, // 6: io.clbs.octopusmq.protobuf.PullSingleRequest.timeout:type_name -> google.protobuf.Duration
 	0,  // 7: io.clbs.octopusmq.protobuf.PullSingleResponse.item:type_name -> io.clbs.octopusmq.protobuf.Item
@@ -2131,7 +2131,7 @@ func file_messages_proto_init() {
 			}
 		}
 		file_messages_proto_msgTypes[3].Exporter = func(v any, i int) any {
-			switch v := v.(*PushSuscribeRequestStart); i {
+			switch v := v.(*PushSubcribeRequestStart); i {
 			case 0:
 				return &v.state
 			case 1:

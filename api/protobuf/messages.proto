@@ -29,12 +29,12 @@ message EnqueueRequest {
 
 message PushSubscribeRequest {
   oneof subreq {
-    PushSuscribeRequestStart start = 1;
+    PushSubcribeRequestStart start = 1;
     PushSubscribeRequestItem item = 2;
   }
 }
 
-message PushSuscribeRequestStart {
+message PushSubcribeRequestStart {
   string queueName = 1;
   google.protobuf.Duration timeout = 2;
 }
