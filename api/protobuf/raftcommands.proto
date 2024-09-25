@@ -56,11 +56,12 @@ message RaftStorageDelete {
 
 message RaftStorageInsert {
     uint64 id = 1;
-    uint32 priority = 2;
-    uint32 flags = 3;
-    uint64 hash = 4;
-    bytes key = 5;
-    bytes value = 6;
+    uint64 ttl = 2;
+    uint32 priority = 3;
+    uint32 flags = 4;
+    uint64 hash = 5;
+    bytes key = 6;
+    bytes value = 7;
 }
 
 message RaftStorageFlags {
