@@ -20,8 +20,8 @@ message Item {
 }
 
 message InputItem {
-  // Absolute unix time in ms after when this item is ready to be pulled.
-  uint64 ttl = 1;
+  // In what duration item should be ready to pull, 0 for immediate pull.
+  google.protobuf.Duration ttl = 1;
   // Priority of the item. The lower the value, the lower the priority.
   uint32 priority = 2;
   // Grouping key of the item. Items with the same key are grouped and returned together to the same receiver when the first groupped item hits the head.
@@ -128,7 +128,7 @@ message RequeueRequest {
 // Requeue item consists of id and ttl as unix absolute time in ms when requeued item is ready to be pulled, 0 means immediately.
 message RequeueItem {
   uint64 id = 1;
-  uint64 ttl = 2;
+  google.protobuf.Duration ttl = 2;
 }
 
 // RequeueResponse message returns the number of items that were requeued.
