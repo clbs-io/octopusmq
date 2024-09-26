@@ -47,6 +47,7 @@ message RaftStorageCommand {
         RaftStorageDelete delete = 1;
         RaftStorageInsert insert = 2;
         RaftStorageFlags flags = 3;
+        RaftStorageTtl ttl = 4;
     }
 }
 
@@ -68,4 +69,9 @@ message RaftStorageFlags {
     uint64 id = 1;
     uint32 flags = 2;
     uint32 mask = 3;
+}
+
+message RaftStorageTtl {
+    uint64 id = 1;
+    uint64 ttl = 2;
 }
