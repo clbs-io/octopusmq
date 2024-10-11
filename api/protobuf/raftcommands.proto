@@ -48,6 +48,7 @@ message RaftStorageCommand {
         RaftStorageInsert insert = 2;
         RaftStorageFlags flags = 3;
         RaftStorageTtl ttl = 4;
+        RaftStorageNoop noop = 5;
     }
 }
 
@@ -74,4 +75,8 @@ message RaftStorageFlags {
 message RaftStorageTtl {
     uint64 id = 1;
     uint64 ttl = 2;
+}
+
+message RaftStorageNoop {
+    bool noop = 1;
 }
