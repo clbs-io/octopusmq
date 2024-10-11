@@ -38,6 +38,7 @@ message RaftPurgeQueue {
 
 message RaftStartNoop {
     google.protobuf.Timestamp startTime = 1;
+    string uuid = 2;
 }
 
 message RaftStorageCommands {
