@@ -3,22 +3,26 @@ package io.clbs.octopusmq.grpc.raftcmd;
 option go_package = "github.com/clbs-io/octopusmq/pkg/grpcraftcmdpb";
 
 import "messages.proto";
+import "google/protobuf/timestamp.proto";
 
 message RaftCommand {
     oneof command {
-        RaftCreateQueue createqueue = 1;
-        io.clbs.octopusmq.protobuf.DeleteQueueRequest deletequeue = 2;
-        RaftPauseResumeQueue pauseresumequeue = 3;
-        RaftPurgeQueue purgequeue = 4;
+        RaftCreateQueue createQueue = 1;
+        io.clbs.octopusmq.protobuf.DeleteQueueRequest deleteQueue = 2;
+        RaftPauseResumeQueue pauseResumeQueue = 3;
+        RaftPurgeQueue purgeQueue = 4;
 
         // internal storage commands
-        RaftStorageCommands storagecommands = 5;
-        RaftStorageDeleteIds storagedeleteids = 6;
+        RaftStorageCommands storageCommands = 5;
+        RaftStorageDeleteIds storageDeleteIds = 6;
+
+        // starting hack
+        RaftStartNoop startNoop = 7;
       }
 }
 
 message RaftCreateQueue {
-    uint32 queueid = 1;
+    uint32 queueId = 1;
     io.clbs.octopusmq.protobuf.CreateQueueRequest queue = 2;
 }
 
@@ -30,6 +34,10 @@ message RaftPauseResumeQueue {
 message RaftPurgeQueue {
     bool all = 1;
     repeated string queueName = 2;
+}
+
+message RaftStartNoop {
+    google.protobuf.Timestamp startTime = 1;
 }
 
 message RaftStorageCommands {
@@ -48,7 +56,6 @@ message RaftStorageCommand {
         RaftStorageInsert insert = 2;
         RaftStorageFlags flags = 3;
         RaftStorageTtl ttl = 4;
-        RaftStorageNoop noop = 5;
     }
 }
 
@@ -75,8 +82,4 @@ message RaftStorageFlags {
 message RaftStorageTtl {
     uint64 id = 1;
     uint64 ttl = 2;
-}
-
-message RaftStorageNoop {
-    bool noop = 1;
 }
