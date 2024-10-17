@@ -6,39 +6,6 @@ import "messages.proto";
 
 // The service represents main operations on the queues.
 service QueuesService {
-  // Push enques an item to the queue, if the queue is not full (queue has max size) or unless the timeout expires.
-  rpc Push(io.clbs.octopusmq.protobuf.EnqueueRequest) returns (io.clbs.octopusmq.protobuf.EnqueueResponse);
-
-  // PushSubscribe enques an item to the queue and subscribes to the queue, if the queue is not full (queue has max size) or unless the timeout expires.
-  rpc PushSubscribe(stream io.clbs.octopusmq.protobuf.PushSubscribeRequest) returns (stream io.clbs.octopusmq.protobuf.EnqueueResponse);
-
-  // Prepend adds an item to the head of the queue, if the queue is not full (queue has max size) or unless the timeout expires.
-  rpc Prepend(io.clbs.octopusmq.protobuf.EnqueueRequest) returns (io.clbs.octopusmq.protobuf.EnqueueResponse);
-
-  // PullSingle pulls a single item from the queue.
-  rpc PullSingle(io.clbs.octopusmq.protobuf.PullSingleRequest) returns (io.clbs.octopusmq.protobuf.PullSingleResponse);
-
-  // Pull pulls multiple items from the queue.
-  rpc Pull(io.clbs.octopusmq.protobuf.PullRequest) returns (io.clbs.octopusmq.protobuf.PullResponse);
-
-  // CommitSingle commits a single item.
-  rpc CommitSingle(io.clbs.octopusmq.protobuf.CommitSingleRequest) returns (io.clbs.octopusmq.protobuf.CommitSingleResponse);
-
-  // Commit commits multiple items.
-  rpc Commit(io.clbs.octopusmq.protobuf.CommitRequest) returns (io.clbs.octopusmq.protobuf.CommitResponse);
-
-  // RequeueSingle requeues a single item.
-  rpc RequeueSingle(io.clbs.octopusmq.protobuf.RequeueSingleRequest) returns (io.clbs.octopusmq.protobuf.RequeueSingleResponse);
-
-  // Requeue requeues multiple items.
-  rpc Requeue(io.clbs.octopusmq.protobuf.RequeueRequest) returns (io.clbs.octopusmq.protobuf.RequeueResponse);
-
-  // DeleteSingle deletes a single item.
-  rpc DeleteSingle(io.clbs.octopusmq.protobuf.DeleteSingleRequest) returns (io.clbs.octopusmq.protobuf.DeleteSingleResponse);
-
-  // Delete deletes multiple items.
-  rpc Delete(io.clbs.octopusmq.protobuf.DeleteRequest) returns (io.clbs.octopusmq.protobuf.DeleteResponse);
-
-  // Subscribe subscribes to the queue, currently doing pulling based on signal from client, see SubscribeRequest for more details.
-  rpc Subscribe(stream io.clbs.octopusmq.protobuf.SubscribeRequest) returns (stream io.clbs.octopusmq.protobuf.SubscribeResponse);
+  // Main command connection to the queue server. Inside this stream, all commands are sent.
+  rpc Connect(stream io.clbs.octopusmq.protobuf.QueueRequest) returns (stream io.clbs.octopusmq.protobuf.QueueResponse);
 }

@@ -32,24 +32,53 @@ message InputItem {
   bytes value = 4;
 }
 
+enum StatusCode {
+  STATUS_CODE_OK = 0;
+  STATUS_CODE_ERROR = 1;
+  STATUS_CODE_TIMEOUT = 2;
+  STATUS_CODE_NOT_FOUND = 3;
+  STATUS_CODE_INVALID_ARGUMENT = 4;
+  STATUS_CODE_ALREADY_EXISTS = 5;
+}
+
+message QueueRequest {
+  uint64 correlationId = 1;
+  oneof command {
+    EnqueueRequest enqueue = 2;
+    PullSingleRequest pullSingle = 3;
+    PullRequest pull = 4;
+    CommitSingleRequest commitSingle = 5;
+    CommitRequest commit = 6;
+    RequeueSingleRequest requeueSingle = 7;
+    RequeueRequest requeue = 8;
+    DeleteSingleRequest deleteSingle = 9;
+    DeleteRequest delete = 10;
+  }
+}
+
+message QueueResponse {
+  uint64 correlationId = 1;
+  StatusCode status = 2;
+  oneof response {
+    EnqueueResponse enqueue = 3;
+    PullSingleResponse pullSingle = 4;
+    PullResponse pull = 5;
+    CommitSingleResponse commitSingle = 6;
+    CommitResponse commit = 7;
+    RequeueSingleResponse requeueSingle = 8;
+    RequeueResponse requeue = 9;
+    DeleteSingleResponse deleteSingle = 10;
+    DeleteResponse delete = 11;
+  }
+}
+
 // EnqueueRequest contains the item to be prepended and duration of the timeout.
 message EnqueueRequest {
   // The name of the queue.
   string queueName = 1;
   InputItem item = 2;
   google.protobuf.Duration timeout = 3;
-}
-
-message PushSubscribeRequest {
-  oneof subreq {
-    PushSubcribeRequestStart start = 1;
-    InputItem item = 2;
-  }
-}
-
-message PushSubcribeRequestStart {
-  string queueName = 1;
-  google.protobuf.Duration timeout = 2;
+  bool prepend = 4;
 }
 
 // EnqueueResponse sends back only item ID
@@ -160,30 +189,7 @@ message DeleteResponse {
   int32 ret = 1;
 }
 
-// SubscribeRequest message, register a streamed receiver for particular queue.
-message SubscribeRequest {
-  // The name of the queue.
-  oneof subreq {
-    SubscribeRequestStart start = 1;
-    SubscribeRequestResponse response = 2;
-  }
-}
-
-message SubscribeRequestStart {
-  string queueName = 1;
-  uint32 batchSize = 2;
-}
-
-message SubscribeRequestResponse {
-  bool eof = 1;
-  repeated uint64 commit = 2;
-  repeated RequeueItem requeue = 3;
-}
-
-// SubscribeResponse message contains an array of items pulled from the queue.
-message SubscribeResponse {
-  repeated Item items = 1;
-}
+// Following messages are management related only
 
 // CreateQueueRequest message contains the data to create a new queue.
 message CreateQueueRequest {
@@ -202,11 +208,11 @@ message DeleteQueueRequest {
 
 // ListQueuesResponse message contains an array of queues that are running on the server.
 message ListQueuesResponse {
-  repeated ListItem queues = 1;
+  repeated ListQueueItem queues = 1;
 }
 
-// ListItem message contains the queue info.
-message ListItem {
+// ListQueueItem message contains the queue info.
+message ListQueueItem {
   // Non-empty name of the queue.
   string queueName = 1;
   // Number of priorities, the lower the value, the higher the priority. The highest priority is 0, the lowest is 'priorities - 1'.
