@@ -44,15 +44,16 @@ enum StatusCode {
 message QueueRequest {
   uint64 correlationId = 1;
   oneof command {
-    EnqueueRequest enqueue = 2;
-    PullSingleRequest pullSingle = 3;
-    PullRequest pull = 4;
-    CommitSingleRequest commitSingle = 5;
-    CommitRequest commit = 6;
-    RequeueSingleRequest requeueSingle = 7;
-    RequeueRequest requeue = 8;
-    DeleteSingleRequest deleteSingle = 9;
-    DeleteRequest delete = 10;
+    bool noop = 2;
+    EnqueueRequest enqueue = 3;
+    PullSingleRequest pullSingle = 4;
+    PullRequest pull = 5;
+    CommitSingleRequest commitSingle = 6;
+    CommitRequest commit = 7;
+    RequeueSingleRequest requeueSingle = 8;
+    RequeueRequest requeue = 9;
+    DeleteSingleRequest deleteSingle = 10;
+    DeleteRequest delete = 11;
   }
 }
 
@@ -60,15 +61,16 @@ message QueueResponse {
   uint64 correlationId = 1;
   StatusCode status = 2;
   oneof response {
-    EnqueueResponse enqueue = 3;
-    PullSingleResponse pullSingle = 4;
-    PullResponse pull = 5;
-    CommitSingleResponse commitSingle = 6;
-    CommitResponse commit = 7;
-    RequeueSingleResponse requeueSingle = 8;
-    RequeueResponse requeue = 9;
-    DeleteSingleResponse deleteSingle = 10;
-    DeleteResponse delete = 11;
+    bool noop = 3;
+    EnqueueResponse enqueue = 4;
+    PullSingleResponse pullSingle = 5;
+    PullResponse pull = 6;
+    CommitSingleResponse commitSingle = 7;
+    CommitResponse commit = 8;
+    RequeueSingleResponse requeueSingle = 9;
+    RequeueResponse requeue = 10;
+    DeleteSingleResponse deleteSingle = 11;
+    DeleteResponse delete = 12;
   }
 }
 
