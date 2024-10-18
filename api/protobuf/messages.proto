@@ -64,18 +64,17 @@ message QueueRequest {
 
 message QueueResponse {
   uint64 correlationId = 1;
-  StatusCode status = 2;
   oneof response {
-    NoResponse noresp = 3;
-    EnqueueResponse enqueue = 4;
-    PullSingleResponse pullSingle = 5;
-    PullResponse pull = 6;
-    CommitSingleResponse commitSingle = 7;
-    CommitResponse commit = 8;
-    RequeueSingleResponse requeueSingle = 9;
-    RequeueResponse requeue = 10;
-    DeleteSingleResponse deleteSingle = 11;
-    DeleteResponse delete = 12;
+    StatusResponse status = 2;
+    EnqueueResponse enqueue = 3;
+    PullSingleResponse pullSingle = 4;
+    PullResponse pull = 5;
+    CommitSingleResponse commitSingle = 6;
+    CommitResponse commit = 7;
+    RequeueSingleResponse requeueSingle = 8;
+    RequeueResponse requeue = 9;
+    DeleteSingleResponse deleteSingle = 10;
+    DeleteResponse delete = 11;
   }
 }
 
@@ -86,7 +85,9 @@ message SetupRequest {
 message NoopRequest {
 }
 
-message NoResponse {
+message StatusResponse {
+  StatusCode code = 1;
+  string message = 2;
 }
 
 // EnqueueRequest contains the item to be prepended and duration of the timeout.
