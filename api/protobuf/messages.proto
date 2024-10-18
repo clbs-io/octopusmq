@@ -39,21 +39,23 @@ enum StatusCode {
   STATUS_CODE_NOT_FOUND = 3;
   STATUS_CODE_INVALID_ARGUMENT = 4;
   STATUS_CODE_ALREADY_EXISTS = 5;
+  STATUS_CODE_QUEUE_NOT_FOUND = 6;
 }
 
 message QueueRequest {
   uint64 correlationId = 1;
   oneof command {
-    bool noop = 2;
-    EnqueueRequest enqueue = 3;
-    PullSingleRequest pullSingle = 4;
-    PullRequest pull = 5;
-    CommitSingleRequest commitSingle = 6;
-    CommitRequest commit = 7;
-    RequeueSingleRequest requeueSingle = 8;
-    RequeueRequest requeue = 9;
-    DeleteSingleRequest deleteSingle = 10;
-    DeleteRequest delete = 11;
+    SetupRequest setup = 2;
+    NoopRequest noop = 3;
+    EnqueueRequest enqueue = 4;
+    PullSingleRequest pullSingle = 5;
+    PullRequest pull = 6;
+    CommitSingleRequest commitSingle = 7;
+    CommitRequest commit = 8;
+    RequeueSingleRequest requeueSingle = 9;
+    RequeueRequest requeue = 10;
+    DeleteSingleRequest deleteSingle = 11;
+    DeleteRequest delete = 12;
   }
 }
 
@@ -61,7 +63,7 @@ message QueueResponse {
   uint64 correlationId = 1;
   StatusCode status = 2;
   oneof response {
-    bool noop = 3;
+    NoResponse noresp = 3;
     EnqueueResponse enqueue = 4;
     PullSingleResponse pullSingle = 5;
     PullResponse pull = 6;
@@ -74,10 +76,19 @@ message QueueResponse {
   }
 }
 
+message SetupRequest {
+  string queueName = 1;
+}
+
+message NoopRequest {
+}
+
+message NoResponse {
+}
+
 // EnqueueRequest contains the item to be prepended and duration of the timeout.
 message EnqueueRequest {
   // The name of the queue.
-  string queueName = 1;
   InputItem item = 2;
   google.protobuf.Duration timeout = 3;
   bool prepend = 4;
@@ -91,7 +102,6 @@ message EnqueueResponse {
 // PullSingleRequest message contains duration, for how long should request wait for item if the queue is empty.
 message PullSingleRequest {
   // The name of the queue.
-  string queueName = 1;
   google.protobuf.Duration timeout = 2;
 }
 
@@ -103,7 +113,6 @@ message PullSingleResponse {
 // PullRequest message: batchSize: number of items to pull, timeout: for how long should request wait for items if the queue is empty.
 message PullRequest {
   // The name of the queue.
-  string queueName = 1;
   int32 batchSize = 2;
   google.protobuf.Duration timeout = 3;
 }
@@ -116,7 +125,6 @@ message PullResponse {
 // CommitSingleRequest
 message CommitSingleRequest {
   // The name of the queue.
-  string queueName = 1;
   uint64 id = 2;
 }
 
@@ -128,7 +136,6 @@ message CommitSingleResponse {
 // CommitRequest sends an array of item IDs to commit.
 message CommitRequest {
   // The name of the queue.
-  string queueName = 1;
   repeated uint64 ids = 2;
 }
 
@@ -140,7 +147,6 @@ message CommitResponse {
 // RequeueSingleRequest message contains the ID of the item to requeue.
 message RequeueSingleRequest {
   // The name of the queue.
-  string queueName = 1;
   RequeueItem item = 2;
 }
 
@@ -152,7 +158,6 @@ message RequeueSingleResponse {
 // RequeueRequest message sends an array of item IDs to requeue.
 message RequeueRequest {
   // The name of the queue.
-  string queueName = 1;
   repeated RequeueItem items = 2;
 }
 
@@ -170,7 +175,6 @@ message RequeueResponse {
 // DeleteSingleRequest message contains the ID of the item to delete.
 message DeleteSingleRequest {
   // The name of the queue.
-  string queueName = 1;
   uint64 id = 2;
 }
 
@@ -182,7 +186,6 @@ message DeleteSingleResponse {
 // DeleteRequest message sends an array of item IDs to delete.
 message DeleteRequest {
   // The name of the queue.
-  string queueName = 1;
   repeated uint64 ids = 2;
 }
 
