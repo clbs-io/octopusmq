@@ -42,6 +42,7 @@ enum StatusCode {
   STATUS_CODE_QUEUE_NOT_FOUND = 6;
   STATUS_CODE_QUEUE_BUSY = 7;
   STATUS_CODE_QUEUE_PAUSED = 8;
+  STATUS_CODE_LEADER_SWITCH = 9;
 }
 
 message QueueRequest {
