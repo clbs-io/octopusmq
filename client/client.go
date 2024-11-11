@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sync/atomic"
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -25,7 +26,6 @@ type Client struct {
 }
 
 type QueueClient struct {
-	Name   string
 	stream grpc.BidiStreamingClient[pb.QueueRequest, pb.QueueResponse]
 	corrid uint64
 }
@@ -103,7 +103,6 @@ func (c *Client) OpenQueue(ctx context.Context, name string, opts ...grpc.CallOp
 		return nil, err
 	}
 	ret := &QueueClient{
-		Name:   name,
 		stream: str,
 		corrid: 0,
 	}
@@ -147,8 +146,7 @@ func (c *QueueClient) handlestatus() error {
 }
 
 func (c *QueueClient) handleresp(cmd *pb.QueueRequest) (*pb.QueueResponse, error) {
-	c.corrid++
-	cmd.CorrelationId = c.corrid
+	cmd.CorrelationId = atomic.AddUint64(&c.corrid, 1)
 	err := c.stream.Send(cmd)
 	if err != nil {
 		return nil, err
@@ -157,8 +155,8 @@ func (c *QueueClient) handleresp(cmd *pb.QueueRequest) (*pb.QueueResponse, error
 	if err != nil {
 		return nil, err
 	}
-	if reqp.CorrelationId != c.corrid {
-		return nil, fmt.Errorf("unexpected correlation id: %v", reqp.CorrelationId)
+	if reqp.CorrelationId != cmd.CorrelationId {
+		return nil, fmt.Errorf("unexpected correlation id: %d != %d", cmd.CorrelationId, reqp.CorrelationId)
 	}
 	return reqp, nil
 }
