@@ -177,7 +177,7 @@ func (c *QueueClient) Close() error {
 	return c.stream.CloseSend()
 }
 
-func (c *QueueClient) Push(req *pb.EnqueueRequest) (*pb.EnqueueResponse, error) {
+func (c *QueueClient) Enqueue(req *pb.EnqueueRequest) (*pb.EnqueueResponse, error) {
 	reqp, err := c.handleresp(&pb.QueueRequest{
 		Command: &pb.QueueRequest_Enqueue{
 			Enqueue: req,
