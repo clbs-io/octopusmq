@@ -2,7 +2,6 @@ package client
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"sync/atomic"
 
@@ -26,12 +25,14 @@ type Client struct {
 }
 
 type QueueClient struct {
-	stream grpc.BidiStreamingClient[pb.QueueRequest, pb.QueueResponse]
-	corrid uint64
+	svcClient grpcpb.QueuesServiceClient
+	stream    grpc.BidiStreamingClient[pb.QueueRequest, pb.QueueResponse]
+	corrid    uint64
+	opts      []grpc.CallOption // like really?
+	ctx       context.Context
+	qname     string
+	closed    bool // till no close called, try to open at any cost
 }
-
-// handle some general error, like timeouts?
-var ErrQueueTimeout = errors.New("queue operation timeout")
 
 // NewClient creates a new client for the given address
 // It panics if the client cannot be created
@@ -73,85 +74,120 @@ func (c *Client) EnsureQueue(ctx context.Context, req *pb.CreateQueueRequest, op
 	return err
 }
 
+func handledeferrors(err error) error {
+	if err == nil {
+		return nil
+	}
+	st, ok := status.FromError(err)
+	if ok {
+		switch st.Code() {
+		case codes.NotFound:
+			return ErrQueueNotFound
+		case codes.AlreadyExists:
+			return ErrQueueAlreadyExists
+		case codes.FailedPrecondition:
+			return ErrQueuePaused
+		}
+	}
+	return err
+}
+
 func (c *Client) CreateQueue(ctx context.Context, req *pb.CreateQueueRequest, opts ...grpc.CallOption) error {
 	_, err := c.mgmtClient.CreateQueue(ctx, req, opts...)
-	return err
+	return handledeferrors(err)
 }
 
 func (c *Client) DeleteQueue(ctx context.Context, req *pb.DeleteQueueRequest, opts ...grpc.CallOption) error {
 	_, err := c.mgmtClient.DeleteQueue(ctx, req, opts...)
-	return err
+	return handledeferrors(err)
 }
 
 func (c *Client) ListQueues(ctx context.Context, req *emptypb.Empty, opts ...grpc.CallOption) (*pb.ListQueuesResponse, error) {
-	return c.mgmtClient.ListQueues(ctx, req, opts...)
+	ret, err := c.mgmtClient.ListQueues(ctx, req, opts...)
+	return ret, handledeferrors(err)
 }
 
 func (c *Client) PauseQueue(ctx context.Context, req *pb.PauseQueueRequest, opts ...grpc.CallOption) error {
 	_, err := c.mgmtClient.PauseQueue(ctx, req, opts...)
-	return err
+	return handledeferrors(err)
 }
 
 func (c *Client) ResumeQueue(ctx context.Context, req *pb.ResumeQueueRequest, opts ...grpc.CallOption) error {
 	_, err := c.mgmtClient.ResumeQueue(ctx, req, opts...)
-	return err
+	return handledeferrors(err)
 }
 
-func (c *Client) OpenQueue(ctx context.Context, name string, opts ...grpc.CallOption) (*QueueClient, error) {
-	str, err := c.svcClient.Connect(ctx, opts...)
+func (c *Client) OpenQueue(ctx context.Context, name string, opts ...grpc.CallOption) *QueueClient {
+	// opening on demand, on every attempt
+	return &QueueClient{
+		svcClient: c.svcClient,
+		closed:    false,
+		stream:    nil,
+		corrid:    0,
+		opts:      opts,
+		ctx:       ctx,
+		qname:     name,
+	}
+}
+
+func (c *QueueClient) open() (err error) {
+	if c.closed {
+		return ErrQueueClientClosed
+	}
+	if c.stream != nil {
+		return nil
+	}
+	defer func() {
+		if err != nil && c.stream != nil {
+			_ = c.stream.CloseSend()
+			c.stream = nil
+		}
+	}()
+
+	c.stream, err = c.svcClient.Connect(c.ctx, c.opts...)
 	if err != nil {
-		return nil, err
+		return // handle errors?
 	}
-	ret := &QueueClient{
-		stream: str,
-		corrid: 0,
-	}
-	err = str.Send(&pb.QueueRequest{
+	var resp *pb.QueueResponse
+	resp, err = c.handleresp(&pb.QueueRequest{
 		CorrelationId: 0,
 		Command: &pb.QueueRequest_Setup{
 			Setup: &pb.SetupRequest{
-				QueueName: name,
+				QueueName: c.qname,
 			},
 		},
 	})
 	if err != nil {
-		_ = ret.Close()
-		return nil, err
+		return
 	}
-	err = ret.handlestatus()
-	if err != nil {
-		_ = ret.Close()
-		ret = nil
-
-	}
-	return ret, err
-}
-
-func (c *QueueClient) handlestatus() error {
-	req, err := c.stream.Recv()
-	if err != nil {
-		return err
-	}
-	if req.CorrelationId != c.corrid {
-		return fmt.Errorf("unexpected correlation id: %v", req.CorrelationId)
-	}
-	if st, ok := req.Response.(*pb.QueueResponse_Status); ok {
+	if st, ok := resp.Response.(*pb.QueueResponse_Status); ok {
 		if st.Status.Code != pb.StatusCode_STATUS_CODE_OK {
 			return fmt.Errorf("setup failed: %v", st.Status)
 		}
 	} else {
-		return fmt.Errorf("setup failed, invalid response type: %T", req)
+		return fmt.Errorf("setup failed, invalid response type: %T", resp)
 	}
-	return nil
+	return
 }
 
-func (c *QueueClient) handleresp(cmd *pb.QueueRequest) (*pb.QueueResponse, error) {
-	cmd.CorrelationId = atomic.AddUint64(&c.corrid, 1)
-	err := c.stream.Send(cmd)
+func (c *QueueClient) handleresp(cmd *pb.QueueRequest) (reqp *pb.QueueResponse, err error) {
+	err = c.open()
 	if err != nil {
 		return nil, err
 	}
-	reqp, err := c.stream.Recv()
+	defer func() {
+		if err != nil {
+			_ = c.stream.CloseSend()
+			c.stream = nil
+		}
+	}()
+
+	cmd.CorrelationId = atomic.AddUint64(&c.corrid, 1)
+	err = c.stream.Send(cmd)
+	if err != nil {
+		return nil, err
+	}
+	reqp, err = c.stream.Recv()
 	if err != nil {
 		return nil, err
 	}
@@ -172,7 +208,14 @@ func decodestatus(cc *pb.QueueResponse_Status) error {
 }
 
 func (c *QueueClient) Close() error {
-	return c.stream.CloseSend()
+	if c.closed {
+		return ErrQueueClientClosed
+	}
+	c.closed = true
+	if c.stream == nil {
+		return nil
+	}
+	return c.stream.CloseSend() // closed with error... consider it just closed...
 }
 
 func (c *QueueClient) Enqueue(req *pb.EnqueueRequest) (*pb.EnqueueResponse, error) {
