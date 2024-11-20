@@ -3,8 +3,10 @@ package client
 import (
 	"context"
 	"fmt"
+	"io"
 	"sync/atomic"
 
+	"go.uber.org/zap"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
@@ -22,6 +24,7 @@ type Client struct {
 	svcClient  grpcpb.QueuesServiceClient
 	mgmtClient grpcmgmtpb.ManagementServiceClient
 	grpcClient *grpc.ClientConn
+	logger     *zap.SugaredLogger
 }
 
 type QueueClient struct {
@@ -32,11 +35,12 @@ type QueueClient struct {
 	ctx       context.Context
 	qname     string
 	closed    bool // till no close called, try to open at any cost
+	logger    *zap.SugaredLogger
 }
 
 // NewClient creates a new client for the given address
 // It panics if the client cannot be created
-func NewClient(target string, grpcOptions ...grpc.DialOption) *Client {
+func NewClient(target string, logger *zap.SugaredLogger, grpcOptions ...grpc.DialOption) *Client {
 	grpcClient, grpcClientErr := grpc.NewClient(target, grpcOptions...)
 	if grpcClientErr != nil {
 		panic(grpcClientErr)
@@ -49,6 +53,7 @@ func NewClient(target string, grpcOptions ...grpc.DialOption) *Client {
 		svcClient:  svcClient,
 		grpcClient: grpcClient,
 		mgmtClient: mgmtClient,
+		logger:     logger,
 	}
 }
 
@@ -127,6 +132,7 @@ func (c *Client) OpenQueue(ctx context.Context, name string, opts ...grpc.CallOp
 		opts:      opts,
 		ctx:       ctx,
 		qname:     name,
+		logger:    c.logger,
 	}
 }
 
@@ -185,10 +191,26 @@ func (c *QueueClient) handleresp(cmd *pb.QueueRequest) (reqp *pb.QueueResponse, 
 	cmd.CorrelationId = atomic.AddUint64(&c.corrid, 1)
 	err = c.stream.Send(cmd)
 	if err != nil {
+		if st, ok := status.FromError(err); ok {
+			switch st.Code() {
+			case codes.DeadlineExceeded:
+			case codes.Canceled:
+				c.logger.Errorf("stream send error: %v, reduced to io.EOF", err)
+				return nil, io.EOF
+			}
+		}
 		return nil, err
 	}
 	reqp, err = c.stream.Recv()
 	if err != nil {
+		if st, ok := status.FromError(err); ok {
+			switch st.Code() {
+			case codes.DeadlineExceeded:
+			case codes.Canceled:
+				c.logger.Errorf("stream recv error: %v, reduced to io.EOF", err)
+				return nil, io.EOF
+			}
+		}
 		return nil, err
 	}
 	if reqp.CorrelationId != cmd.CorrelationId {
