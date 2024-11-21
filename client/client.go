@@ -102,6 +102,11 @@ func (c *Client) CreateQueue(ctx context.Context, req *pb.CreateQueueRequest, op
 	return handledeferrors(err)
 }
 
+func (c *Client) ResizeQueue(ctx context.Context, req *pb.ResizeQueueRequest, opts ...grpc.CallOption) error {
+	_, err := c.mgmtClient.ResizeQueue(ctx, req, opts...)
+	return handledeferrors(err)
+}
+
 func (c *Client) DeleteQueue(ctx context.Context, req *pb.DeleteQueueRequest, opts ...grpc.CallOption) error {
 	_, err := c.mgmtClient.DeleteQueue(ctx, req, opts...)
 	return handledeferrors(err)
