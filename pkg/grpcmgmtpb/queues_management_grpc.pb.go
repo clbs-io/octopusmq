@@ -22,6 +22,7 @@ const _ = grpc.SupportPackageIsVersion9
 
 const (
 	ManagementService_CreateQueue_FullMethodName = "/io.clbs.octopusmq.grpc.management.ManagementService/CreateQueue"
+	ManagementService_ResizeQueue_FullMethodName = "/io.clbs.octopusmq.grpc.management.ManagementService/ResizeQueue"
 	ManagementService_DeleteQueue_FullMethodName = "/io.clbs.octopusmq.grpc.management.ManagementService/DeleteQueue"
 	ManagementService_ListQueues_FullMethodName  = "/io.clbs.octopusmq.grpc.management.ManagementService/ListQueues"
 	ManagementService_PauseQueue_FullMethodName  = "/io.clbs.octopusmq.grpc.management.ManagementService/PauseQueue"
@@ -37,6 +38,8 @@ type ManagementServiceClient interface {
 	// CreateQueue creates a new queue. The named queue starts immediately.
 	// If the queue already exists, the operation fails.
 	CreateQueue(ctx context.Context, in *protobuf.CreateQueueRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	// ResizeQueue resizes the queue. If the queue does not exist, the operation fails. To shrink the queue, it has to be empty enought.
+	ResizeQueue(ctx context.Context, in *protobuf.ResizeQueueRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	// DeleteQueue deletes the queue. If the queue does not exist, the operation fails.
 	DeleteQueue(ctx context.Context, in *protobuf.DeleteQueueRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	// ListQueues lists all queues defined on the server side.
@@ -59,6 +62,16 @@ func (c *managementServiceClient) CreateQueue(ctx context.Context, in *protobuf.
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(emptypb.Empty)
 	err := c.cc.Invoke(ctx, ManagementService_CreateQueue_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *managementServiceClient) ResizeQueue(ctx context.Context, in *protobuf.ResizeQueueRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, ManagementService_ResizeQueue_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -114,6 +127,8 @@ type ManagementServiceServer interface {
 	// CreateQueue creates a new queue. The named queue starts immediately.
 	// If the queue already exists, the operation fails.
 	CreateQueue(context.Context, *protobuf.CreateQueueRequest) (*emptypb.Empty, error)
+	// ResizeQueue resizes the queue. If the queue does not exist, the operation fails. To shrink the queue, it has to be empty enought.
+	ResizeQueue(context.Context, *protobuf.ResizeQueueRequest) (*emptypb.Empty, error)
 	// DeleteQueue deletes the queue. If the queue does not exist, the operation fails.
 	DeleteQueue(context.Context, *protobuf.DeleteQueueRequest) (*emptypb.Empty, error)
 	// ListQueues lists all queues defined on the server side.
@@ -134,6 +149,9 @@ type UnimplementedManagementServiceServer struct{}
 
 func (UnimplementedManagementServiceServer) CreateQueue(context.Context, *protobuf.CreateQueueRequest) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method CreateQueue not implemented")
+}
+func (UnimplementedManagementServiceServer) ResizeQueue(context.Context, *protobuf.ResizeQueueRequest) (*emptypb.Empty, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ResizeQueue not implemented")
 }
 func (UnimplementedManagementServiceServer) DeleteQueue(context.Context, *protobuf.DeleteQueueRequest) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method DeleteQueue not implemented")
@@ -182,6 +200,24 @@ func _ManagementService_CreateQueue_Handler(srv interface{}, ctx context.Context
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(ManagementServiceServer).CreateQueue(ctx, req.(*protobuf.CreateQueueRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ManagementService_ResizeQueue_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(protobuf.ResizeQueueRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ManagementServiceServer).ResizeQueue(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ManagementService_ResizeQueue_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ManagementServiceServer).ResizeQueue(ctx, req.(*protobuf.ResizeQueueRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -268,6 +304,10 @@ var ManagementService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "CreateQueue",
 			Handler:    _ManagementService_CreateQueue_Handler,
+		},
+		{
+			MethodName: "ResizeQueue",
+			Handler:    _ManagementService_ResizeQueue_Handler,
 		},
 		{
 			MethodName: "DeleteQueue",

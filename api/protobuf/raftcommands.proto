@@ -18,6 +18,9 @@ message RaftCommand {
 
         // starting hack
         RaftStartNoop startNoop = 7;
+
+        // next commands
+        io.clbs.octopusmq.protobuf.ResizeQueueRequest resizeQueue = 8;
       }
 }
 

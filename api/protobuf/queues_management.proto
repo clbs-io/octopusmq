@@ -10,6 +10,8 @@ service ManagementService {
   // CreateQueue creates a new queue. The named queue starts immediately.
   // If the queue already exists, the operation fails.
   rpc CreateQueue(io.clbs.octopusmq.protobuf.CreateQueueRequest) returns (google.protobuf.Empty);
+  // ResizeQueue resizes the queue. If the queue does not exist, the operation fails. To shrink the queue, it has to be empty enought.
+  rpc ResizeQueue(io.clbs.octopusmq.protobuf.ResizeQueueRequest) returns (google.protobuf.Empty);
   // DeleteQueue deletes the queue. If the queue does not exist, the operation fails.
   rpc DeleteQueue(io.clbs.octopusmq.protobuf.DeleteQueueRequest) returns (google.protobuf.Empty);
   // ListQueues lists all queues defined on the server side.

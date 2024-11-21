@@ -210,6 +210,13 @@ message CreateQueueRequest {
   uint32 maxSize = 3;
 }
 
+message ResizeQueueRequest {
+  // Non-empty name of the queue.
+  string queueName = 1;
+  // Maximum number of items in the queue. If set to 0, the queue has no limit.
+  uint32 maxSize = 2;
+}
+
 // DeleteQueueRequest message contains the identification of the queue to delete.
 message DeleteQueueRequest {
   string queueName = 1;
