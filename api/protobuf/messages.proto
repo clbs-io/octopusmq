@@ -237,8 +237,10 @@ message ListQueueItem {
   uint32 maxSize = 3;
   // Number of items in the queue.
   uint32 count = 4;
+  // Number of active unacknowledged items in the queue.
+  uint32 active = 5;
   // Identifies whether the queue is paused.
-  bool paused = 5;
+  bool paused = 6;
 }
 
 // ResumeQueueRequest message contains the identification of the queue to resume.
