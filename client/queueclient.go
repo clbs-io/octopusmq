@@ -82,8 +82,8 @@ func (c *QueueClient) open() (err error) {
 	if err != nil {
 		return // handle errors?
 	}
-	var resp *pb.QueueResponse
-	resp, err = c.handleresp(&pb.QueueRequest{
+	// manually setup stream without receiver yet
+	err = c.stream.Send(&pb.QueueRequest{
 		CorrelationId: 0,
 		Command: &pb.QueueRequest_Setup{
 			Setup: &pb.SetupRequest{
@@ -91,6 +91,11 @@ func (c *QueueClient) open() (err error) {
 			},
 		},
 	})
+	if err != nil {
+		return
+	}
+	var resp *pb.QueueResponse
+	resp, err = c.stream.Recv()
 	if err != nil {
 		return
 	}
