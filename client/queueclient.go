@@ -334,93 +334,39 @@ func (c *QueueClient) Delete(req *pb.DeleteRequest) (*pb.DeleteResponse, error) 
 
 // async motherfuckers
 func (c *QueueClient) Pull(req *pb.PullRequest) (*pb.PullResponse, error) {
-	cmd := &pb.QueueRequest{
+	reqp, err := c.handleresp(&pb.QueueRequest{
 		Command: &pb.QueueRequest_Pull{
 			Pull: req,
 		},
-	}
-	ch, err := c.handlesend(cmd)
+	})
 	if err != nil {
 		return nil, err
 	}
-
-	defer func() { // fucking hell
-		c.lock.Lock()
-		delete(c.corrmap, cmd.CorrelationId)
-		c.lock.Unlock()
-	}()
-
-	select {
-	case reqp, ok := <-ch:
-		if !ok {
-			return nil, fmt.Errorf("forcibly closed")
-		}
-		switch cc := reqp.Response.(type) {
-		case *pb.QueueResponse_Status:
-			return nil, decodestatus(cc)
-		case *pb.QueueResponse_Pull:
-			return cc.Pull, nil
-		default:
-			return nil, fmt.Errorf("unexpected response type: %T", cc)
-		}
-	case err, ok := <-c.errch:
-		if !ok {
-			return nil, fmt.Errorf("already in error") // already error
-		}
-		if st, ok := status.FromError(err); ok {
-			switch st.Code() {
-			case codes.DeadlineExceeded:
-			case codes.Canceled:
-				c.logger.Errorf("stream recv error: %v, reduced to io.EOF", err)
-				return nil, io.EOF
-			}
-		}
-		return nil, err
+	switch cc := reqp.Response.(type) {
+	case *pb.QueueResponse_Status:
+		return nil, decodestatus(cc)
+	case *pb.QueueResponse_Pull:
+		return cc.Pull, nil
+	default:
+		return nil, fmt.Errorf("unexpected response type: %T", cc)
 	}
 }
 
 func (c *QueueClient) PullSingle(req *pb.PullSingleRequest) (*pb.PullSingleResponse, error) {
-	cmd := &pb.QueueRequest{
+	reqp, err := c.handleresp(&pb.QueueRequest{
 		Command: &pb.QueueRequest_PullSingle{
 			PullSingle: req,
 		},
-	}
-	ch, err := c.handlesend(cmd)
+	})
 	if err != nil {
 		return nil, err
 	}
-
-	defer func() { // fucking hell
-		c.lock.Lock()
-		delete(c.corrmap, cmd.CorrelationId)
-		c.lock.Unlock()
-	}()
-
-	select {
-	case reqp, ok := <-ch:
-		if !ok {
-			return nil, fmt.Errorf("forcibly closed")
-		}
-		switch cc := reqp.Response.(type) {
-		case *pb.QueueResponse_Status:
-			return nil, decodestatus(cc)
-		case *pb.QueueResponse_PullSingle:
-			return cc.PullSingle, nil
-		default:
-			return nil, fmt.Errorf("unexpected response type: %T", cc)
-		}
-	case err, ok := <-c.errch:
-		if !ok {
-			return nil, fmt.Errorf("already in error") // already error
-		}
-		if st, ok := status.FromError(err); ok {
-			switch st.Code() {
-			case codes.DeadlineExceeded:
-			case codes.Canceled:
-				c.logger.Errorf("stream recv error: %v, reduced to io.EOF", err)
-				return nil, io.EOF
-			}
-		}
-		return nil, err
+	switch cc := reqp.Response.(type) {
+	case *pb.QueueResponse_Status:
+		return nil, decodestatus(cc)
+	case *pb.QueueResponse_PullSingle:
+		return cc.PullSingle, nil
+	default:
+		return nil, fmt.Errorf("unexpected response type: %T", cc)
 	}
 }
