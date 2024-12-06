@@ -4,7 +4,7 @@ go 1.23.0
 
 require (
 	google.golang.org/grpc v1.65.0
-	google.golang.org/protobuf v1.34.2
+	google.golang.org/protobuf v1.35.2
 )
 
 require go.uber.org/multierr v1.10.0 // indirect
