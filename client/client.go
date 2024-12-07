@@ -8,6 +8,8 @@ import (
 	"google.golang.org/grpc/status"
 
 	"github.com/clbs-io/octopusmq/pkg/grpcmgmtpb"
+	"github.com/clbs-io/octopusmq/pkg/grpcstoragemgmtpb"
+	"github.com/clbs-io/octopusmq/pkg/grpcstoragepb"
 	"google.golang.org/protobuf/types/known/emptypb"
 
 	pb "github.com/clbs-io/octopusmq/api/protobuf"
@@ -18,10 +20,12 @@ import (
 // Client is a simple wrapper of grpcpb.QueuesServiceClient, since grpcpb package is internal
 // When you are done with the client, you should call the Close() method to release the resources
 type Client struct {
-	svcClient  grpcpb.QueuesServiceClient
-	mgmtClient grpcmgmtpb.ManagementServiceClient
-	grpcClient *grpc.ClientConn
-	logger     *zap.SugaredLogger
+	queueConnect grpcpb.QueuesServiceClient
+	mgmtClient   grpcmgmtpb.ManagementServiceClient
+	stoClient    grpcstoragemgmtpb.StorageManagementServiceClient
+	stoConnect   grpcstoragepb.StorageServiceClient
+	grpcClient   *grpc.ClientConn
+	logger       *zap.SugaredLogger
 }
 
 // NewClient creates a new client for the given address
@@ -34,12 +38,16 @@ func NewClient(target string, logger *zap.SugaredLogger, grpcOptions ...grpc.Dia
 
 	svcClient := grpcpb.NewQueuesServiceClient(grpcClient)
 	mgmtClient := grpcmgmtpb.NewManagementServiceClient(grpcClient)
+	stoClient := grpcstoragemgmtpb.NewStorageManagementServiceClient(grpcClient)
+	stoConnect := grpcstoragepb.NewStorageServiceClient(grpcClient)
 
 	return &Client{
-		svcClient:  svcClient,
-		grpcClient: grpcClient,
-		mgmtClient: mgmtClient,
-		logger:     logger,
+		queueConnect: svcClient,
+		grpcClient:   grpcClient,
+		mgmtClient:   mgmtClient,
+		stoClient:    stoClient,
+		stoConnect:   stoConnect,
+		logger:       logger,
 	}
 }
 
@@ -111,4 +119,20 @@ func (c *Client) PauseQueue(ctx context.Context, req *pb.PauseQueueRequest, opts
 func (c *Client) ResumeQueue(ctx context.Context, req *pb.ResumeQueueRequest, opts ...grpc.CallOption) error {
 	_, err := c.mgmtClient.ResumeQueue(ctx, req, opts...)
 	return handledeferrors(err)
+}
+
+// storage
+func (c *Client) CreateStorage(ctx context.Context, req *pb.CreateStorageRequest, opts ...grpc.CallOption) error {
+	_, err := c.stoClient.CreateStorage(ctx, req, opts...)
+	return handledeferrors(err)
+}
+
+func (c *Client) DeleteStorage(ctx context.Context, req *pb.DeleteStorageRequest, opts ...grpc.CallOption) error {
+	_, err := c.stoClient.DeleteStorage(ctx, req, opts...)
+	return handledeferrors(err)
+}
+
+func (c *Client) ListStorages(ctx context.Context, req *emptypb.Empty, opts ...grpc.CallOption) (*pb.ListStoragesResponse, error) {
+	ret, err := c.stoClient.ListStorages(ctx, req, opts...)
+	return ret, handledeferrors(err)
 }

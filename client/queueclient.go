@@ -32,7 +32,7 @@ type QueueClient struct {
 func (c *Client) OpenQueue(ctx context.Context, name string, opts ...grpc.CallOption) (*QueueClient, error) {
 	// opening on demand, on every attempt
 	ret := &QueueClient{
-		svcClient: c.svcClient,
+		svcClient: c.queueConnect,
 		closed:    false,
 		stream:    nil,
 		corrid:    0,
@@ -368,5 +368,22 @@ func (c *QueueClient) PullSingle(req *pb.PullSingleRequest) (*pb.PullSingleRespo
 		return cc.PullSingle, nil
 	default:
 		return nil, fmt.Errorf("unexpected response type: %T", cc)
+	}
+}
+
+func (c *QueueClient) Noop() error {
+	reqp, err := c.handleresp(&pb.QueueRequest{
+		Command: &pb.QueueRequest_Noop{
+			Noop: &pb.NoopRequest{},
+		},
+	})
+	if err != nil {
+		return err
+	}
+	switch cc := reqp.Response.(type) {
+	case *pb.QueueResponse_Status:
+		return decodestatus(cc)
+	default:
+		return fmt.Errorf("unexpected response type: %T", cc)
 	}
 }
