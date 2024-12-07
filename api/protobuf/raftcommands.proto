@@ -49,9 +49,8 @@ message RaftStartNoop {
 }
 
 message RaftStorageCommands {
-    string queueName = 1;
-    uint32 id = 2;
-    repeated RaftStorageCommand commands = 3;
+    uint32 id = 1;
+    repeated RaftStorageCommand commands = 2;
 }
 
 message RaftStorageDeleteIds {
