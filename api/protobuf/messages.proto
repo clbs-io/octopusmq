@@ -286,8 +286,8 @@ message StorageRequest {
     StorageSetRequest set = 4;
     StorageGetRequest get = 5;
     StorageDeleteRequest delete = 6;
-    StorageLockAnyRequest lockAny = 7;
-    StorageReleaseRequest release = 8;
+    StorageLockAnyIdRequest lockAny = 7;
+    StorageReleaseIdRequest release = 8;
   }
 }
 
@@ -316,15 +316,16 @@ message StorageDeleteRequest {
   bytes key = 1;
 }
 
-message StorageLockAnyRequest {
+message StorageLockAnyIdRequest {
   google.protobuf.Duration timeout = 1;
 }
 
-message StorageReleaseRequest {
-  bytes key = 1;
+message StorageReleaseIdRequest {
+  uint64 id = 1;
 }
 
 message StorageDataResponse {
-  bytes key = 1;
-  bytes value = 2;
+  uint64 id = 1;
+  bytes key = 2;
+  bytes value = 3;
 }
