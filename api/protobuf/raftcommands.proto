@@ -10,7 +10,7 @@ message RaftCommand {
         RaftCreateQueue createQueue = 1;
         io.clbs.octopusmq.protobuf.DeleteQueueRequest deleteQueue = 2;
         RaftPauseResumeQueue pauseResumeQueue = 3;
-        RaftPurgeQueue purgeQueue = 4;
+        RaftPurgeItems purgeItems = 4;
 
         // internal storage commands
         RaftStorageCommands storageCommands = 5;
@@ -38,9 +38,7 @@ message RaftPauseResumeQueue {
     bool pause = 2;
 }
 
-message RaftPurgeQueue {
-    bool all = 1;
-    repeated string queueName = 2;
+message RaftPurgeItems {
 }
 
 message RaftStartNoop {
