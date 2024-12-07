@@ -1,0 +1,13 @@
+syntax = "proto3";
+package io.clbs.octopusmq.grpc.management;
+option go_package = "github.com/clbs-io/octopusmq/pkg/grpcstoragemgmtpb";
+
+import "google/protobuf/empty.proto";
+import "messages.proto";
+
+// The service represents management on the storage.
+service StorageManagementService {
+  rpc CreateStorage(io.clbs.octopusmq.protobuf.CreateStorageRequest) returns (google.protobuf.Empty);
+  rpc DeleteStorage(io.clbs.octopusmq.protobuf.DeleteStorageRequest) returns (google.protobuf.Empty);
+  rpc ListStorages(google.protobuf.Empty) returns (io.clbs.octopusmq.protobuf.ListStoragesResponse);
+}

@@ -40,9 +40,12 @@ enum StatusCode {
   STATUS_CODE_INVALID_ARGUMENT = 4;
   STATUS_CODE_ALREADY_EXISTS = 5;
   STATUS_CODE_QUEUE_NOT_FOUND = 6;
-  STATUS_CODE_QUEUE_BUSY = 7;
+  STATUS_CODE_ITEM_BUSY = 7;
   STATUS_CODE_QUEUE_PAUSED = 8;
   STATUS_CODE_LEADER_SWITCH = 9;
+  STATUS_CODE_STORAGE_NOT_FOUND = 10;
+  STATUS_CODE_ITEM_NOT_BUSY = 11;
+  STATUS_CODE_ITEM_NOT_FOUND = 12;
 }
 
 message QueueRequest {
@@ -251,4 +254,77 @@ message PauseQueueRequest {
 // ResumeQueueRequest message contains the identification of the queue to resume.
 message ResumeQueueRequest {
   string queueName = 1;
+}
+
+// storage management
+
+message CreateStorageRequest {
+  // Non-empty name of the storage.
+  string storageName = 1;
+}
+
+message DeleteStorageRequest {
+  string storageName = 1;
+}
+
+message ListStoragesResponse {
+  repeated ListStorageItem storages = 1;
+}
+
+message ListStorageItem {
+  // Non-empty name of the storage.
+  string storageName = 1;
+  uint32 count = 2;
+  uint32 active = 3;
+}
+
+message StorageRequest {
+  uint64 correlationId = 1;
+  oneof command {
+    StorageSetupRequest setup = 2;
+    NoopRequest noop = 3;
+    StorageSetRequest set = 4;
+    StorageGetRequest get = 5;
+    StorageDeleteRequest delete = 6;
+    StorageLockAnyRequest lockAny = 7;
+    StorageReleaseRequest release = 8;
+  }
+}
+
+message StorageResponse {
+  uint64 correlationId = 1;
+  oneof response {
+    StatusResponse status = 2;
+    StorageDataResponse dataResponse = 3;
+  }
+}
+
+message StorageSetupRequest {
+  string storageName = 1;
+}
+
+message StorageSetRequest {
+  bytes key = 1;
+  bytes value = 2;
+}
+
+message StorageGetRequest {
+  bytes key = 1;
+}
+
+message StorageDeleteRequest {
+  bytes key = 1;
+}
+
+message StorageLockAnyRequest {
+  google.protobuf.Duration timeout = 1;
+}
+
+message StorageReleaseRequest {
+  bytes key = 1;
+}
+
+message StorageDataResponse {
+  bytes key = 1;
+  bytes value = 2;
 }

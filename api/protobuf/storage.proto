@@ -1,0 +1,11 @@
+syntax = "proto3";
+package io.clbs.octopusmq.grpc;
+option go_package = "github.com/clbs-io/octopusmq/pkg/grpcstoragepb";
+
+import "messages.proto";
+
+// The service represents main operations on the storages.
+service StorageService {
+  // Main command connection to the storage server. Inside this stream, all commands are sent.
+  rpc StorageConnect(stream io.clbs.octopusmq.protobuf.StorageRequest) returns (stream io.clbs.octopusmq.protobuf.StorageResponse);
+}

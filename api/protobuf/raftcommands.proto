@@ -21,7 +21,11 @@ message RaftCommand {
 
         // next commands
         io.clbs.octopusmq.protobuf.ResizeQueueRequest resizeQueue = 8;
-      }
+
+        // storage
+        RaftCreateStorage createStorage = 9;
+        io.clbs.octopusmq.protobuf.DeleteStorageRequest deleteStorage = 10;
+    }
 }
 
 message RaftCreateQueue {
@@ -86,4 +90,9 @@ message RaftStorageFlags {
 message RaftStorageTtl {
     uint64 id = 1;
     uint64 ttl = 2;
+}
+
+message RaftCreateStorage {
+    uint32 storageId = 1;
+    io.clbs.octopusmq.protobuf.CreateStorageRequest storage = 2;
 }
