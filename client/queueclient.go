@@ -382,6 +382,9 @@ func (c *QueueClient) Noop() error {
 	}
 	switch cc := reqp.Response.(type) {
 	case *pb.QueueResponse_Status:
+		if cc.Status.Code == pb.StatusCode_STATUS_CODE_OK {
+			return nil
+		}
 		return decodestatus(cc)
 	default:
 		return fmt.Errorf("unexpected response type: %T", cc)

@@ -229,6 +229,9 @@ func (c *StorageClient) Set(req *pb.StorageSetRequest) error {
 	}
 	switch cc := reqp.Response.(type) {
 	case *pb.StorageResponse_Status:
+		if cc.Status.Code == pb.StatusCode_STATUS_CODE_OK {
+			return nil
+		}
 		return decodestoragestatus(cc)
 	default:
 		return fmt.Errorf("unexpected response type: %T", cc)
@@ -246,6 +249,9 @@ func (c *StorageClient) Delete(req *pb.StorageDeleteRequest) error {
 	}
 	switch cc := reqp.Response.(type) {
 	case *pb.StorageResponse_Status:
+		if cc.Status.Code == pb.StatusCode_STATUS_CODE_OK {
+			return nil
+		}
 		return decodestoragestatus(cc)
 	default:
 		return fmt.Errorf("unexpected response type: %T", cc)
@@ -282,6 +288,9 @@ func (c *StorageClient) Noop() error {
 	}
 	switch cc := reqp.Response.(type) {
 	case *pb.StorageResponse_Status:
+		if cc.Status.Code == pb.StatusCode_STATUS_CODE_OK {
+			return nil
+		}
 		return decodestoragestatus(cc)
 	default:
 		return fmt.Errorf("unexpected response type: %T", cc)
