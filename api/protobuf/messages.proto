@@ -322,6 +322,7 @@ message StorageLockAnyWithIdRequest {
 
 message StorageReleaseIdRequest {
   uint64 id = 1;
+  bool delete = 2;
 }
 
 message StorageDataResponse {

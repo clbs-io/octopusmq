@@ -277,6 +277,26 @@ func (c *StorageClient) LockAny(req *pb.StorageLockAnyWithIdRequest) (*pb.Storag
 	}
 }
 
+func (c *StorageClient) ReleaseId(req *pb.StorageReleaseIdRequest) error {
+	reqp, err := c.handleresp(&pb.StorageRequest{
+		Command: &pb.StorageRequest_ReleaseId{
+			ReleaseId: req,
+		},
+	})
+	if err != nil {
+		return err
+	}
+	switch cc := reqp.Response.(type) {
+	case *pb.StorageResponse_Status:
+		if cc.Status.Code == pb.StatusCode_STATUS_CODE_OK {
+			return nil
+		}
+		return decodestoragestatus(cc)
+	default:
+		return fmt.Errorf("unexpected response type: %T", cc)
+	}
+}
+
 func (c *StorageClient) Noop() error {
 	reqp, err := c.handleresp(&pb.StorageRequest{
 		Command: &pb.StorageRequest_Noop{
