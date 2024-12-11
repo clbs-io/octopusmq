@@ -61,6 +61,7 @@ message RaftStorageCommand {
         RaftStorageInsert insert = 2;
         RaftStorageFlags flags = 3;
         RaftStorageTtl ttl = 4;
+        RaftStorageUpdate update = 5;
     }
 }
 
@@ -73,6 +74,14 @@ message RaftStorageInsert {
     uint64 ttl = 2;
     uint32 priority = 3;
     uint32 flags = 4;
+    uint64 hash = 5;
+    bytes key = 6;
+    bytes value = 7;
+}
+
+message RaftStorageUpdate {
+    uint64 id = 1;
+    uint32 flags = 4; // intentionally missing fields from insert here
     uint64 hash = 5;
     bytes key = 6;
     bytes value = 7;
