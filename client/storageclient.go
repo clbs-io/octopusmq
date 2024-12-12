@@ -62,13 +62,14 @@ func (c *StorageClient) receiver() {
 		// put r according to correlation id to proper channel, this is damn slow, maybe integrate that into caller application instead of this mess?
 		c.lock.Lock()
 		if ch, ok := c.corrmap[r.CorrelationId]; ok {
+			delete(c.corrmap, r.CorrelationId)
+			c.lock.Unlock()
 			ch <- r
 			close(ch)
-			delete(c.corrmap, r.CorrelationId)
 		} else {
+			c.lock.Unlock()
 			c.logger.Errorf("unexpected correlation id: %d", r.CorrelationId)
 		}
-		c.lock.Unlock()
 	}
 }
 
