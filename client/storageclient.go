@@ -74,17 +74,17 @@ func (c *StorageClient) receiver() {
 }
 
 func (c *StorageClient) open() (err error) {
-	defer func() {
-		if err != nil && c.stream != nil {
-			_ = c.stream.CloseSend()
-			c.stream = nil
-		}
-	}()
-
 	c.stream, err = c.stoClient.StorageConnect(c.ctx, c.opts...)
 	if err != nil {
 		return // handle errors?
 	}
+
+	defer func() {
+		if err != nil {
+			_ = c.stream.CloseSend()
+		}
+	}()
+
 	// manually setup stream without receiver yet
 	err = c.stream.Send(&pb.StorageRequest{
 		CorrelationId: 0,
@@ -186,10 +186,7 @@ func (c *StorageClient) Close() (err error) {
 		return ErrStorageClientClosed
 	}
 	c.closed = true
-	if c.stream != nil {
-		err = c.stream.CloseSend() // closed with error... consider it just closed...
-		c.stream = nil             // just screw it
-	}
+	err = c.stream.CloseSend() // closed with error... consider it just closed...
 
 	for _, ch := range c.corrmap { // just close it, damn i have to figure out a bit different way how to handle this... i just dont like it
 		close(ch)
