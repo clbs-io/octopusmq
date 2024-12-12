@@ -63,6 +63,8 @@ func (c *QueueClient) receiver() {
 		c.lock.Lock()
 		if ch, ok := c.corrmap[r.CorrelationId]; ok {
 			ch <- r
+			close(ch)
+			delete(c.corrmap, r.CorrelationId)
 		} else {
 			c.logger.Errorf("unexpected correlation id: %d", r.CorrelationId)
 		}
@@ -144,11 +146,6 @@ func (c *QueueClient) handleresp(cmd *pb.QueueRequest) (*pb.QueueResponse, error
 	if err != nil {
 		return nil, err
 	}
-	defer func() { // fucking hell
-		c.lock.Lock()
-		delete(c.corrmap, cmd.CorrelationId)
-		c.lock.Unlock()
-	}()
 	select {
 	case reqp, ok := <-ch:
 		if !ok {
