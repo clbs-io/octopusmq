@@ -7,34 +7,34 @@ import "google/protobuf/timestamp.proto";
 
 message RaftCommand {
     oneof command {
-        RaftCreateQueue createQueue = 1;
-        io.clbs.octopusmq.protobuf.DeleteQueueRequest deleteQueue = 2;
-        RaftPauseResumeQueue pauseResumeQueue = 3;
-        RaftPurgeItems purgeItems = 4;
+        RaftCreateQueue create_queue = 1;
+        io.clbs.octopusmq.protobuf.DeleteQueueRequest delete_queue = 2;
+        RaftPauseResumeQueue pause_resume_queue = 3;
+        RaftPurgeItems purge_items = 4;
 
         // internal storage commands
-        RaftStorageCommands storageCommands = 5;
-        RaftStorageDeleteIds storageDeleteIds = 6;
+        RaftStorageCommands storage_commands = 5;
+        RaftStorageDeleteIds storage_delete_ids = 6;
 
         // starting hack
-        RaftStartNoop startNoop = 7;
+        RaftStartNoop start_noop = 7;
 
         // next commands
-        io.clbs.octopusmq.protobuf.ResizeQueueRequest resizeQueue = 8;
+        io.clbs.octopusmq.protobuf.ResizeQueueRequest resize_queue = 8;
 
         // storage
-        RaftCreateStorage createStorage = 9;
-        io.clbs.octopusmq.protobuf.DeleteStorageRequest deleteStorage = 10;
+        RaftCreateStorage create_storage = 9;
+        io.clbs.octopusmq.protobuf.DeleteStorageRequest delete_storage = 10;
     }
 }
 
 message RaftCreateQueue {
-    uint32 queueId = 1;
+    uint32 queue_id = 1;
     io.clbs.octopusmq.protobuf.CreateQueueRequest queue = 2;
 }
 
 message RaftPauseResumeQueue {
-    string queueName = 1;
+    string queue_name = 1;
     bool pause = 2;
 }
 
@@ -42,7 +42,7 @@ message RaftPurgeItems {
 }
 
 message RaftStartNoop {
-    google.protobuf.Timestamp startTime = 1;
+    google.protobuf.Timestamp start_time = 1;
     string uuid = 2;
 }
 
@@ -99,6 +99,6 @@ message RaftStorageTtl {
 }
 
 message RaftCreateStorage {
-    uint32 storageId = 1;
+    uint32 storage_id = 1;
     io.clbs.octopusmq.protobuf.CreateStorageRequest storage = 2;
 }

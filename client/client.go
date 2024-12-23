@@ -106,8 +106,8 @@ func (c *Client) DeleteQueue(ctx context.Context, req *pb.DeleteQueueRequest, op
 	return handledeferrors(err)
 }
 
-func (c *Client) ListQueues(ctx context.Context, req *emptypb.Empty, opts ...grpc.CallOption) (*pb.ListQueuesResponse, error) {
-	ret, err := c.mgmtClient.ListQueues(ctx, req, opts...)
+func (c *Client) ListQueues(ctx context.Context, opts ...grpc.CallOption) (*pb.ListQueuesResponse, error) {
+	ret, err := c.mgmtClient.ListQueues(ctx, &emptypb.Empty{}, opts...)
 	return ret, handledeferrors(err)
 }
 
@@ -132,7 +132,7 @@ func (c *Client) DeleteStorage(ctx context.Context, req *pb.DeleteStorageRequest
 	return handledeferrors(err)
 }
 
-func (c *Client) ListStorages(ctx context.Context, req *emptypb.Empty, opts ...grpc.CallOption) (*pb.ListStoragesResponse, error) {
-	ret, err := c.stoClient.ListStorages(ctx, req, opts...)
+func (c *Client) ListStorages(ctx context.Context, opts ...grpc.CallOption) (*pb.ListStoragesResponse, error) {
+	ret, err := c.stoClient.ListStorages(ctx, &emptypb.Empty{}, opts...)
 	return ret, handledeferrors(err)
 }

@@ -112,7 +112,7 @@ func (c *StorageClient) open() (err error) {
 	return
 }
 
-func (c *StorageClient) handlesend(cmd *pb.StorageRequest) (ch chan *pb.StorageResponse, err error) {
+func (c *StorageClient) handlesend(cmd *pb.StorageRequest, keepid bool) (ch chan *pb.StorageResponse, err error) {
 	c.lock.Lock()
 	defer c.lock.Unlock()
 
@@ -120,11 +120,18 @@ func (c *StorageClient) handlesend(cmd *pb.StorageRequest) (ch chan *pb.StorageR
 		return nil, ErrStorageClientClosed
 	}
 
-	c.corrid++
-	if _, ok := c.corrmap[c.corrid]; ok { // damn shouldnt happen, fucking so many map check, that shit couldnt be fast at all
-		return nil, fmt.Errorf("correlation id collision: %d", c.corrid)
+	var corrid uint64
+	if keepid {
+		corrid = cmd.CorrelationId
+	} else {
+		c.corrid++
+		corrid = c.corrid
+		cmd.CorrelationId = c.corrid
 	}
-	cmd.CorrelationId = c.corrid
+
+	if _, ok := c.corrmap[corrid]; ok { // damn shouldnt happen, fucking so many map check, that shit couldnt be fast at all
+		return nil, fmt.Errorf("correlation id collision: %d", corrid)
+	}
 	err = c.stream.Send(cmd)
 	if err != nil {
 		if st, ok := status.FromError(err); ok {
@@ -137,13 +144,13 @@ func (c *StorageClient) handlesend(cmd *pb.StorageRequest) (ch chan *pb.StorageR
 		}
 	} else {
 		ch = make(chan *pb.StorageResponse)
-		c.corrmap[c.corrid] = ch
+		c.corrmap[corrid] = ch
 	}
 	return
 }
 
-func (c *StorageClient) handleresp(cmd *pb.StorageRequest) (*pb.StorageResponse, error) {
-	ch, err := c.handlesend(cmd)
+func (c *StorageClient) handleresp(cmd *pb.StorageRequest, keepid bool) (*pb.StorageResponse, error) {
+	ch, err := c.handlesend(cmd, keepid)
 	if err != nil {
 		return nil, err
 	}
@@ -199,7 +206,7 @@ func (c *StorageClient) Get(req *pb.StorageGetRequest) (*pb.StorageDataResponse,
 		Command: &pb.StorageRequest_Get{
 			Get: req,
 		},
-	})
+	}, false)
 	if err != nil {
 		return nil, err
 	}
@@ -213,12 +220,45 @@ func (c *StorageClient) Get(req *pb.StorageGetRequest) (*pb.StorageDataResponse,
 	}
 }
 
+func (c *StorageClient) GetKeys(req *pb.StorageGetKeysRequest) ([][]byte, error) { // maybe todo chores get rid of some simple grpc structures?
+	reqp, err := c.handleresp(&pb.StorageRequest{
+		Command: &pb.StorageRequest_GetKeys{
+			GetKeys: req,
+		},
+	}, false)
+
+	if err != nil {
+		return nil, err
+	}
+	ret := make([][]byte, 0)
+	for {
+		switch cc := reqp.Response.(type) {
+		case *pb.StorageResponse_Status:
+			return nil, decodestoragestatus(cc)
+		case *pb.StorageResponse_GetKeysResponse:
+			ret = append(ret, cc.GetKeysResponse.Keys...)
+			if !cc.GetKeysResponse.More {
+				return ret, nil
+			}
+		default:
+			return nil, fmt.Errorf("unexpected response type: %T", cc)
+		}
+		reqp, err = c.handleresp(&pb.StorageRequest{
+			CorrelationId: reqp.CorrelationId,
+			Command:       &pb.StorageRequest_GetKeysNext{},
+		}, true)
+		if err != nil {
+			return nil, err
+		}
+	}
+}
+
 func (c *StorageClient) Set(req *pb.StorageSetRequest) error {
 	reqp, err := c.handleresp(&pb.StorageRequest{
 		Command: &pb.StorageRequest_Set{
 			Set: req,
 		},
-	})
+	}, false)
 	if err != nil {
 		return err
 	}
@@ -238,7 +278,7 @@ func (c *StorageClient) Delete(req *pb.StorageDeleteRequest) error {
 		Command: &pb.StorageRequest_Delete{
 			Delete: req,
 		},
-	})
+	}, false)
 	if err != nil {
 		return err
 	}
@@ -258,7 +298,7 @@ func (c *StorageClient) LockAny(req *pb.StorageLockAnyWithIdRequest) (*pb.Storag
 		Command: &pb.StorageRequest_LockAnyWithId{
 			LockAnyWithId: req,
 		},
-	})
+	}, false)
 	if err != nil {
 		return nil, err
 	}
@@ -277,7 +317,7 @@ func (c *StorageClient) ReleaseId(req *pb.StorageReleaseIdRequest) error {
 		Command: &pb.StorageRequest_ReleaseId{
 			ReleaseId: req,
 		},
-	})
+	}, false)
 	if err != nil {
 		return err
 	}
@@ -297,7 +337,7 @@ func (c *StorageClient) Noop() error {
 		Command: &pb.StorageRequest_Noop{
 			Noop: &pb.NoopRequest{},
 		},
-	})
+	}, false)
 	if err != nil {
 		return err
 	}

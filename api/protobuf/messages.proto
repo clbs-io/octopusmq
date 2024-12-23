@@ -49,40 +49,40 @@ enum StatusCode {
 }
 
 message QueueRequest {
-  uint64 correlationId = 1;
+  uint64 correlation_id = 1;
   oneof command {
     SetupRequest setup = 2;
     NoopRequest noop = 3;
     EnqueueRequest enqueue = 4;
-    PullSingleRequest pullSingle = 5;
+    PullSingleRequest pull_single = 5;
     PullRequest pull = 6;
-    CommitSingleRequest commitSingle = 7;
+    CommitSingleRequest commit_single = 7;
     CommitRequest commit = 8;
-    RequeueSingleRequest requeueSingle = 9;
+    RequeueSingleRequest requeue_single = 9;
     RequeueRequest requeue = 10;
-    DeleteSingleRequest deleteSingle = 11;
+    DeleteSingleRequest delete_single = 11;
     DeleteRequest delete = 12;
   }
 }
 
 message QueueResponse {
-  uint64 correlationId = 1;
+  uint64 correlation_id = 1;
   oneof response {
     StatusResponse status = 2;
     EnqueueResponse enqueue = 3;
-    PullSingleResponse pullSingle = 4;
+    PullSingleResponse pull_single = 4;
     PullResponse pull = 5;
-    CommitSingleResponse commitSingle = 6;
+    CommitSingleResponse commit_single = 6;
     CommitResponse commit = 7;
-    RequeueSingleResponse requeueSingle = 8;
+    RequeueSingleResponse requeue_single = 8;
     RequeueResponse requeue = 9;
-    DeleteSingleResponse deleteSingle = 10;
+    DeleteSingleResponse delete_single = 10;
     DeleteResponse delete = 11;
   }
 }
 
 message SetupRequest {
-  string queueName = 1;
+  string queue_name = 1;
 }
 
 message NoopRequest {
@@ -120,7 +120,7 @@ message PullSingleResponse {
 // PullRequest message: batchSize: number of items to pull, timeout: for how long should request wait for items if the queue is empty.
 message PullRequest {
   // The name of the queue.
-  int32 batchSize = 2;
+  int32 batch_size = 2;
   google.protobuf.Duration timeout = 3;
 }
 
@@ -206,23 +206,23 @@ message DeleteResponse {
 // CreateQueueRequest message contains the data to create a new queue.
 message CreateQueueRequest {
   // Non-empty name of the queue.
-  string queueName = 1;
+  string queue_name = 1;
   // Number of priorities, the lower the value, the higher the priority. The highest priority is 0, the lowest is 'priorities - 1'.
   uint32 priorities = 2;
   // Maximum number of items in the queue. If set to 0, the queue has no limit.
-  uint32 maxSize = 3;
+  uint32 max_size = 3;
 }
 
 message ResizeQueueRequest {
   // Non-empty name of the queue.
-  string queueName = 1;
+  string queue_name = 1;
   // Maximum number of items in the queue. If set to 0, the queue has no limit.
-  uint32 maxSize = 2;
+  uint32 max_size = 2;
 }
 
 // DeleteQueueRequest message contains the identification of the queue to delete.
 message DeleteQueueRequest {
-  string queueName = 1;
+  string queue_name = 1;
 }
 
 // ListQueuesResponse message contains an array of queues that are running on the server.
@@ -233,11 +233,11 @@ message ListQueuesResponse {
 // ListQueueItem message contains the queue info.
 message ListQueueItem {
   // Non-empty name of the queue.
-  string queueName = 1;
+  string queue_name = 1;
   // Number of priorities, the lower the value, the higher the priority. The highest priority is 0, the lowest is 'priorities - 1'.
   uint32 priorities = 2;
   // Maximum number of items in the queue. If set to 0, the queue has no limit.
-  uint32 maxSize = 3;
+  uint32 max_size = 3;
   // Number of items in the queue.
   uint32 count = 4;
   // Number of active unacknowledged items in the queue.
@@ -248,23 +248,23 @@ message ListQueueItem {
 
 // ResumeQueueRequest message contains the identification of the queue to resume.
 message PauseQueueRequest {
-  string queueName = 1;
+  string queue_name = 1;
 }
 
 // ResumeQueueRequest message contains the identification of the queue to resume.
 message ResumeQueueRequest {
-  string queueName = 1;
+  string queue_name = 1;
 }
 
 // storage management
 
 message CreateStorageRequest {
   // Non-empty name of the storage.
-  string storageName = 1;
+  string storage_name = 1;
 }
 
 message DeleteStorageRequest {
-  string storageName = 1;
+  string storage_name = 1;
 }
 
 message ListStoragesResponse {
@@ -273,34 +273,37 @@ message ListStoragesResponse {
 
 message ListStorageItem {
   // Non-empty name of the storage.
-  string storageName = 1;
+  string storage_name = 1;
   uint32 count = 2;
   uint32 active = 3;
 }
 
 message StorageRequest {
-  uint64 correlationId = 1;
+  uint64 correlation_id = 1;
   oneof command {
     StorageSetupRequest setup = 2;
     NoopRequest noop = 3;
     StorageSetRequest set = 4;
     StorageGetRequest get = 5;
     StorageDeleteRequest delete = 6;
-    StorageLockAnyWithIdRequest lockAnyWithId = 7;
-    StorageReleaseIdRequest releaseId = 8;
+    StorageLockAnyWithIdRequest lock_any_with_id = 7;
+    StorageReleaseIdRequest release_id = 8;
+    StorageGetKeysRequest get_keys = 9;
+    StorageGetKeysNextRequest get_keys_next = 10;
   }
 }
 
 message StorageResponse {
-  uint64 correlationId = 1;
+  uint64 correlation_id = 1;
   oneof response {
     StatusResponse status = 2;
-    StorageDataResponse dataResponse = 3;
+    StorageDataResponse data_response = 3;
+    StorageGetKeysResponse get_keys_response = 4;
   }
 }
 
 message StorageSetupRequest {
-  string storageName = 1;
+  string storage_name = 1;
 }
 
 message StorageSetRequest {
@@ -325,8 +328,20 @@ message StorageReleaseIdRequest {
   bool delete = 2;
 }
 
+message StorageGetKeysRequest {
+  bool active_included = 1;
+}
+
+message StorageGetKeysNextRequest {
+}
+
 message StorageDataResponse {
   uint64 id = 1;
   bytes key = 2;
   bytes value = 3;
+}
+
+message StorageGetKeysResponse {
+  repeated bytes keys = 1;
+  bool more = 2;
 }
