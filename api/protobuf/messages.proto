@@ -309,6 +309,7 @@ message StorageSetupRequest {
 message StorageSetRequest {
   bytes key = 1;
   bytes value = 2;
+  optional google.protobuf.Duration ttl = 3;
 }
 
 message StorageGetRequest {

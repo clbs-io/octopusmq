@@ -61,7 +61,7 @@ message RaftStorageCommand {
         RaftStorageInsert insert = 2;
         RaftStorageFlags flags = 3;
         RaftStorageTtl ttl = 4;
-        RaftStorageUpdate update = 5;
+        RaftStorageUpdate update = 5; // can be RaftStorageInsert, but be more explicit about changed fields here
     }
 }
 
@@ -81,6 +81,7 @@ message RaftStorageInsert {
 
 message RaftStorageUpdate {
     uint64 id = 1;
+    uint64 ttl = 2;
     uint32 flags = 4; // intentionally missing fields from insert here
     uint64 hash = 5;
     bytes key = 6;
