@@ -175,6 +175,8 @@ func decodestatus(cc *pb.QueueResponse_Status) error {
 		return fmt.Errorf("unexpectedly ok")
 	case pb.StatusCode_STATUS_CODE_TIMEOUT:
 		return ErrQueueTimeout
+	case pb.StatusCode_STATUS_CODE_QUEUE_NOT_FOUND:
+		return ErrQueueNotFound
 	}
 	return fmt.Errorf("command error: %s, status: %d", cc.Status.Message, cc.Status.Code)
 }

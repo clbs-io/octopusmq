@@ -182,6 +182,10 @@ func decodestoragestatus(cc *pb.StorageResponse_Status) error {
 		return fmt.Errorf("unexpectedly ok")
 	case pb.StatusCode_STATUS_CODE_TIMEOUT:
 		return ErrStorageTimeout
+	case pb.StatusCode_STATUS_CODE_ITEM_NOT_FOUND:
+		return ErrStorageItemNotFound
+	case pb.StatusCode_STATUS_CODE_STORAGE_NOT_FOUND:
+		return ErrStorageNotFound
 	}
 	return fmt.Errorf("command error: %s, status: %d", cc.Status.Message, cc.Status.Code)
 }
