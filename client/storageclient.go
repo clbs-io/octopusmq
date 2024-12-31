@@ -183,7 +183,7 @@ func decodestoragestatus(cc *pb.StorageResponse_Status) error {
 	case pb.StatusCode_STATUS_CODE_TIMEOUT:
 		return ErrStorageTimeout
 	case pb.StatusCode_STATUS_CODE_ITEM_NOT_FOUND:
-		return ErrStorageItemNotFound
+		return ErrStorageKeyNotFound
 	case pb.StatusCode_STATUS_CODE_STORAGE_NOT_FOUND:
 		return ErrStorageNotFound
 	}

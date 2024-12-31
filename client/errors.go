@@ -15,5 +15,5 @@ var (
 	ErrStorageAlreadyExists = errors.New("storage already exists")
 	ErrStorageClientClosed  = errors.New("storage client closed")
 	ErrStorageTimeout       = errors.New("storage operation timeout")
-	ErrStorageItemNotFound  = errors.New("storage item not found")
+	ErrStorageKeyNotFound   = errors.New("storage key not found")
 )
