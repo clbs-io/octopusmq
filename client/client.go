@@ -122,17 +122,33 @@ func (c *Client) ResumeQueue(ctx context.Context, req *pb.ResumeQueueRequest, op
 }
 
 // storage
+func handledefsterrors(err error) error {
+	if err == nil {
+		return nil
+	}
+	st, ok := status.FromError(err)
+	if ok {
+		switch st.Code() {
+		case codes.NotFound:
+			return ErrStorageNotFound
+		case codes.AlreadyExists:
+			return ErrStorageAlreadyExists
+		}
+	}
+	return err
+}
+
 func (c *Client) CreateStorage(ctx context.Context, req *pb.CreateStorageRequest, opts ...grpc.CallOption) error {
 	_, err := c.stoClient.CreateStorage(ctx, req, opts...)
-	return handledeferrors(err)
+	return handledefsterrors(err)
 }
 
 func (c *Client) DeleteStorage(ctx context.Context, req *pb.DeleteStorageRequest, opts ...grpc.CallOption) error {
 	_, err := c.stoClient.DeleteStorage(ctx, req, opts...)
-	return handledeferrors(err)
+	return handledefsterrors(err)
 }
 
 func (c *Client) ListStorages(ctx context.Context, opts ...grpc.CallOption) (*pb.ListStoragesResponse, error) {
 	ret, err := c.stoClient.ListStorages(ctx, &emptypb.Empty{}, opts...)
-	return ret, handledeferrors(err)
+	return ret, handledefsterrors(err)
 }
