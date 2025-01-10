@@ -152,3 +152,21 @@ func (c *Client) ListStorages(ctx context.Context, opts ...grpc.CallOption) (*pb
 	ret, err := c.stoClient.ListStorages(ctx, &emptypb.Empty{}, opts...)
 	return ret, handledefsterrors(err)
 }
+
+// Queue Management
+func (c *Client) EnsureStorage(ctx context.Context, req *pb.CreateStorageRequest, opts ...grpc.CallOption) error {
+	_, err := c.stoClient.CreateStorage(ctx, req, opts...)
+
+	if err == nil {
+		return nil
+	}
+
+	st := status.Convert(err)
+
+	// suppress the error and return
+	if st.Code() == codes.AlreadyExists {
+		return nil
+	}
+
+	return err
+}
