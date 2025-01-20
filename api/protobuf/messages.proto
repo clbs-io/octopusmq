@@ -97,17 +97,15 @@ message StatusResponse {
   string message = 2;
 }
 
-// EnqueueRequest contains the item to be prepended and duration of the timeout.
+// EnqueueRequest contains the item to be pushed and duration of the timeout.
 message EnqueueRequest {
   InputItem item = 1;
   google.protobuf.Duration timeout = 2;
-  bool prepend = 3;
 }
 
 message BatchEnqueueRequest {
   repeated InputItem items = 1;
   google.protobuf.Duration timeout = 2;
-  bool prepend = 3;
 }
 
 // EnqueueResponse sends back only item ID
