@@ -107,6 +107,7 @@ message EnqueueRequest {
 message BatchEnqueueRequest {
   repeated InputItem items = 1;
   google.protobuf.Duration timeout = 2;
+  bool prepend = 3;
 }
 
 // EnqueueResponse sends back only item ID
