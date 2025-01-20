@@ -215,6 +215,25 @@ func (c *QueueClient) Enqueue(req *pb.EnqueueRequest) (*pb.EnqueueResponse, erro
 	}
 }
 
+func (c *QueueClient) BatchEnqueue(req *pb.BatchEnqueueRequest) (*pb.BatchEnqueueResponse, error) {
+	reqp, err := c.handleresp(&pb.QueueRequest{
+		Command: &pb.QueueRequest_BatchEnqueue{
+			BatchEnqueue: req,
+		},
+	})
+	if err != nil {
+		return nil, err
+	}
+	switch cc := reqp.Response.(type) {
+	case *pb.QueueResponse_Status:
+		return nil, decodestatus(cc)
+	case *pb.QueueResponse_BatchEnqueue:
+		return cc.BatchEnqueue, nil
+	default:
+		return nil, fmt.Errorf("unexpected response type: %T", cc)
+	}
+}
+
 func (c *QueueClient) CommitSingle(req *pb.CommitSingleRequest) (*pb.CommitSingleResponse, error) {
 	reqp, err := c.handleresp(&pb.QueueRequest{
 		Command: &pb.QueueRequest_CommitSingle{

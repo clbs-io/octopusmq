@@ -30,6 +30,8 @@ message InputItem {
   bytes key = 3;
   // Payload of the item.
   bytes value = 4;
+  // Optional compress flag, if not set, then global setting is used
+  optional bool compress = 5;
 }
 
 enum StatusCode {
@@ -62,6 +64,7 @@ message QueueRequest {
     RequeueRequest requeue = 10;
     DeleteSingleRequest delete_single = 11;
     DeleteRequest delete = 12;
+    BatchEnqueueRequest batch_enqueue = 13;
   }
 }
 
@@ -78,6 +81,7 @@ message QueueResponse {
     RequeueResponse requeue = 9;
     DeleteSingleResponse delete_single = 10;
     DeleteResponse delete = 11;
+    BatchEnqueueResponse batch_enqueue = 12;
   }
 }
 
@@ -98,12 +102,20 @@ message EnqueueRequest {
   InputItem item = 1;
   google.protobuf.Duration timeout = 2;
   bool prepend = 3;
-  optional bool compress = 4;
+}
+
+message BatchEnqueueRequest {
+  repeated InputItem items = 1;
+  google.protobuf.Duration timeout = 2;
 }
 
 // EnqueueResponse sends back only item ID
 message EnqueueResponse {
   uint64 id = 1;
+}
+
+message BatchEnqueueResponse {
+  repeated uint64 ids = 1;
 }
 
 // PullSingleRequest message contains duration, for how long should request wait for item if the queue is empty.
