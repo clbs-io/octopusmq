@@ -65,6 +65,7 @@ message QueueRequest {
     DeleteSingleRequest delete_single = 11;
     DeleteRequest delete = 12;
     BatchEnqueueRequest batch_enqueue = 13;
+    GetQueueInfoRequest get_queue_info = 14;
   }
 }
 
@@ -82,6 +83,7 @@ message QueueResponse {
     DeleteSingleResponse delete_single = 10;
     DeleteResponse delete = 11;
     BatchEnqueueResponse batch_enqueue = 12;
+    GetQueueInfoResponse get_queue_info = 13;
   }
 }
 
@@ -95,6 +97,16 @@ message NoopRequest {
 message StatusResponse {
   StatusCode code = 1;
   string message = 2;
+}
+
+message GetQueueInfoRequest {
+}
+
+message GetQueueInfoResponse {
+  uint32 max_size = 1;
+  uint32 length = 2;
+  uint32 active = 3;
+  uint32 priorities = 4;
 }
 
 // EnqueueRequest contains the item to be pushed and duration of the timeout.
@@ -293,6 +305,7 @@ message StorageRequest {
     StorageReleaseIdRequest release_id = 8;
     StorageGetKeysRequest get_keys = 9;
     StorageGetKeysNextRequest get_keys_next = 10;
+    StorageGetInfoRequest get_info = 11;
   }
 }
 
@@ -302,7 +315,16 @@ message StorageResponse {
     StatusResponse status = 2;
     StorageDataResponse data_response = 3;
     StorageGetKeysResponse get_keys_response = 4;
+    StorageGetInfoResponse get_info_response = 5;
   }
+}
+
+message StorageGetInfoRequest {
+}
+
+message StorageGetInfoResponse {
+  uint32 count = 1;
+  uint32 active = 2;
 }
 
 message StorageSetupRequest {
