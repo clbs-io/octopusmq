@@ -355,3 +355,22 @@ func (c *StorageClient) Noop() error {
 		return fmt.Errorf("unexpected response type: %T", cc)
 	}
 }
+
+func (c *StorageClient) GetInfo() (*pb.StorageGetInfoResponse, error) {
+	reqp, err := c.handleresp(&pb.StorageRequest{
+		Command: &pb.StorageRequest_GetInfo{
+			GetInfo: &pb.StorageGetInfoRequest{},
+		},
+	}, false)
+	if err != nil {
+		return nil, err
+	}
+	switch cc := reqp.Response.(type) {
+	case *pb.StorageResponse_Status:
+		return nil, decodestoragestatus(cc)
+	case *pb.StorageResponse_GetInfoResponse:
+		return cc.GetInfoResponse, nil
+	default:
+		return nil, fmt.Errorf("unexpected response type: %T", cc)
+	}
+}

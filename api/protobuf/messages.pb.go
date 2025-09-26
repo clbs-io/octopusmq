@@ -277,6 +277,7 @@ type QueueRequest struct {
 	//	*QueueRequest_DeleteSingle
 	//	*QueueRequest_Delete
 	//	*QueueRequest_BatchEnqueue
+	//	*QueueRequest_GetQueueInfo
 	Command       isQueueRequest_Command `protobuf_oneof:"command"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -434,6 +435,15 @@ func (x *QueueRequest) GetBatchEnqueue() *BatchEnqueueRequest {
 	return nil
 }
 
+func (x *QueueRequest) GetGetQueueInfo() *GetQueueInfoRequest {
+	if x != nil {
+		if x, ok := x.Command.(*QueueRequest_GetQueueInfo); ok {
+			return x.GetQueueInfo
+		}
+	}
+	return nil
+}
+
 type isQueueRequest_Command interface {
 	isQueueRequest_Command()
 }
@@ -486,6 +496,10 @@ type QueueRequest_BatchEnqueue struct {
 	BatchEnqueue *BatchEnqueueRequest `protobuf:"bytes,13,opt,name=batch_enqueue,json=batchEnqueue,proto3,oneof"`
 }
 
+type QueueRequest_GetQueueInfo struct {
+	GetQueueInfo *GetQueueInfoRequest `protobuf:"bytes,14,opt,name=get_queue_info,json=getQueueInfo,proto3,oneof"`
+}
+
 func (*QueueRequest_Setup) isQueueRequest_Command() {}
 
 func (*QueueRequest_Noop) isQueueRequest_Command() {}
@@ -510,6 +524,8 @@ func (*QueueRequest_Delete) isQueueRequest_Command() {}
 
 func (*QueueRequest_BatchEnqueue) isQueueRequest_Command() {}
 
+func (*QueueRequest_GetQueueInfo) isQueueRequest_Command() {}
+
 type QueueResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	CorrelationId uint64                 `protobuf:"varint,1,opt,name=correlation_id,json=correlationId,proto3" json:"correlation_id,omitempty"`
@@ -526,6 +542,7 @@ type QueueResponse struct {
 	//	*QueueResponse_DeleteSingle
 	//	*QueueResponse_Delete
 	//	*QueueResponse_BatchEnqueue
+	//	*QueueResponse_GetQueueInfo
 	Response      isQueueResponse_Response `protobuf_oneof:"response"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -674,6 +691,15 @@ func (x *QueueResponse) GetBatchEnqueue() *BatchEnqueueResponse {
 	return nil
 }
 
+func (x *QueueResponse) GetGetQueueInfo() *GetQueueInfoResponse {
+	if x != nil {
+		if x, ok := x.Response.(*QueueResponse_GetQueueInfo); ok {
+			return x.GetQueueInfo
+		}
+	}
+	return nil
+}
+
 type isQueueResponse_Response interface {
 	isQueueResponse_Response()
 }
@@ -722,6 +748,10 @@ type QueueResponse_BatchEnqueue struct {
 	BatchEnqueue *BatchEnqueueResponse `protobuf:"bytes,12,opt,name=batch_enqueue,json=batchEnqueue,proto3,oneof"`
 }
 
+type QueueResponse_GetQueueInfo struct {
+	GetQueueInfo *GetQueueInfoResponse `protobuf:"bytes,13,opt,name=get_queue_info,json=getQueueInfo,proto3,oneof"`
+}
+
 func (*QueueResponse_Status) isQueueResponse_Response() {}
 
 func (*QueueResponse_Enqueue) isQueueResponse_Response() {}
@@ -743,6 +773,8 @@ func (*QueueResponse_DeleteSingle) isQueueResponse_Response() {}
 func (*QueueResponse_Delete) isQueueResponse_Response() {}
 
 func (*QueueResponse_BatchEnqueue) isQueueResponse_Response() {}
+
+func (*QueueResponse_GetQueueInfo) isQueueResponse_Response() {}
 
 type SetupRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
@@ -876,6 +908,110 @@ func (x *StatusResponse) GetMessage() string {
 	return ""
 }
 
+type GetQueueInfoRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetQueueInfoRequest) Reset() {
+	*x = GetQueueInfoRequest{}
+	mi := &file_api_protobuf_messages_proto_msgTypes[7]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetQueueInfoRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetQueueInfoRequest) ProtoMessage() {}
+
+func (x *GetQueueInfoRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_api_protobuf_messages_proto_msgTypes[7]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetQueueInfoRequest.ProtoReflect.Descriptor instead.
+func (*GetQueueInfoRequest) Descriptor() ([]byte, []int) {
+	return file_api_protobuf_messages_proto_rawDescGZIP(), []int{7}
+}
+
+type GetQueueInfoResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	MaxSize       uint32                 `protobuf:"varint,1,opt,name=max_size,json=maxSize,proto3" json:"max_size,omitempty"`
+	Length        uint32                 `protobuf:"varint,2,opt,name=length,proto3" json:"length,omitempty"`
+	Active        uint32                 `protobuf:"varint,3,opt,name=active,proto3" json:"active,omitempty"`
+	Priorities    uint32                 `protobuf:"varint,4,opt,name=priorities,proto3" json:"priorities,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetQueueInfoResponse) Reset() {
+	*x = GetQueueInfoResponse{}
+	mi := &file_api_protobuf_messages_proto_msgTypes[8]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetQueueInfoResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetQueueInfoResponse) ProtoMessage() {}
+
+func (x *GetQueueInfoResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_api_protobuf_messages_proto_msgTypes[8]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetQueueInfoResponse.ProtoReflect.Descriptor instead.
+func (*GetQueueInfoResponse) Descriptor() ([]byte, []int) {
+	return file_api_protobuf_messages_proto_rawDescGZIP(), []int{8}
+}
+
+func (x *GetQueueInfoResponse) GetMaxSize() uint32 {
+	if x != nil {
+		return x.MaxSize
+	}
+	return 0
+}
+
+func (x *GetQueueInfoResponse) GetLength() uint32 {
+	if x != nil {
+		return x.Length
+	}
+	return 0
+}
+
+func (x *GetQueueInfoResponse) GetActive() uint32 {
+	if x != nil {
+		return x.Active
+	}
+	return 0
+}
+
+func (x *GetQueueInfoResponse) GetPriorities() uint32 {
+	if x != nil {
+		return x.Priorities
+	}
+	return 0
+}
+
 // EnqueueRequest contains the item to be pushed and duration of the timeout.
 type EnqueueRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
@@ -887,7 +1023,7 @@ type EnqueueRequest struct {
 
 func (x *EnqueueRequest) Reset() {
 	*x = EnqueueRequest{}
-	mi := &file_api_protobuf_messages_proto_msgTypes[7]
+	mi := &file_api_protobuf_messages_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -899,7 +1035,7 @@ func (x *EnqueueRequest) String() string {
 func (*EnqueueRequest) ProtoMessage() {}
 
 func (x *EnqueueRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_protobuf_messages_proto_msgTypes[7]
+	mi := &file_api_protobuf_messages_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -912,7 +1048,7 @@ func (x *EnqueueRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use EnqueueRequest.ProtoReflect.Descriptor instead.
 func (*EnqueueRequest) Descriptor() ([]byte, []int) {
-	return file_api_protobuf_messages_proto_rawDescGZIP(), []int{7}
+	return file_api_protobuf_messages_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *EnqueueRequest) GetItem() *InputItem {
@@ -939,7 +1075,7 @@ type BatchEnqueueRequest struct {
 
 func (x *BatchEnqueueRequest) Reset() {
 	*x = BatchEnqueueRequest{}
-	mi := &file_api_protobuf_messages_proto_msgTypes[8]
+	mi := &file_api_protobuf_messages_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -951,7 +1087,7 @@ func (x *BatchEnqueueRequest) String() string {
 func (*BatchEnqueueRequest) ProtoMessage() {}
 
 func (x *BatchEnqueueRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_protobuf_messages_proto_msgTypes[8]
+	mi := &file_api_protobuf_messages_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -964,7 +1100,7 @@ func (x *BatchEnqueueRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use BatchEnqueueRequest.ProtoReflect.Descriptor instead.
 func (*BatchEnqueueRequest) Descriptor() ([]byte, []int) {
-	return file_api_protobuf_messages_proto_rawDescGZIP(), []int{8}
+	return file_api_protobuf_messages_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *BatchEnqueueRequest) GetItems() []*InputItem {
@@ -991,7 +1127,7 @@ type EnqueueResponse struct {
 
 func (x *EnqueueResponse) Reset() {
 	*x = EnqueueResponse{}
-	mi := &file_api_protobuf_messages_proto_msgTypes[9]
+	mi := &file_api_protobuf_messages_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1003,7 +1139,7 @@ func (x *EnqueueResponse) String() string {
 func (*EnqueueResponse) ProtoMessage() {}
 
 func (x *EnqueueResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_protobuf_messages_proto_msgTypes[9]
+	mi := &file_api_protobuf_messages_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1016,7 +1152,7 @@ func (x *EnqueueResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use EnqueueResponse.ProtoReflect.Descriptor instead.
 func (*EnqueueResponse) Descriptor() ([]byte, []int) {
-	return file_api_protobuf_messages_proto_rawDescGZIP(), []int{9}
+	return file_api_protobuf_messages_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *EnqueueResponse) GetId() uint64 {
@@ -1035,7 +1171,7 @@ type BatchEnqueueResponse struct {
 
 func (x *BatchEnqueueResponse) Reset() {
 	*x = BatchEnqueueResponse{}
-	mi := &file_api_protobuf_messages_proto_msgTypes[10]
+	mi := &file_api_protobuf_messages_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1047,7 +1183,7 @@ func (x *BatchEnqueueResponse) String() string {
 func (*BatchEnqueueResponse) ProtoMessage() {}
 
 func (x *BatchEnqueueResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_protobuf_messages_proto_msgTypes[10]
+	mi := &file_api_protobuf_messages_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1060,7 +1196,7 @@ func (x *BatchEnqueueResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use BatchEnqueueResponse.ProtoReflect.Descriptor instead.
 func (*BatchEnqueueResponse) Descriptor() ([]byte, []int) {
-	return file_api_protobuf_messages_proto_rawDescGZIP(), []int{10}
+	return file_api_protobuf_messages_proto_rawDescGZIP(), []int{12}
 }
 
 func (x *BatchEnqueueResponse) GetIds() []uint64 {
@@ -1080,7 +1216,7 @@ type PullSingleRequest struct {
 
 func (x *PullSingleRequest) Reset() {
 	*x = PullSingleRequest{}
-	mi := &file_api_protobuf_messages_proto_msgTypes[11]
+	mi := &file_api_protobuf_messages_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1092,7 +1228,7 @@ func (x *PullSingleRequest) String() string {
 func (*PullSingleRequest) ProtoMessage() {}
 
 func (x *PullSingleRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_protobuf_messages_proto_msgTypes[11]
+	mi := &file_api_protobuf_messages_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1105,7 +1241,7 @@ func (x *PullSingleRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PullSingleRequest.ProtoReflect.Descriptor instead.
 func (*PullSingleRequest) Descriptor() ([]byte, []int) {
-	return file_api_protobuf_messages_proto_rawDescGZIP(), []int{11}
+	return file_api_protobuf_messages_proto_rawDescGZIP(), []int{13}
 }
 
 func (x *PullSingleRequest) GetTimeout() *durationpb.Duration {
@@ -1125,7 +1261,7 @@ type PullSingleResponse struct {
 
 func (x *PullSingleResponse) Reset() {
 	*x = PullSingleResponse{}
-	mi := &file_api_protobuf_messages_proto_msgTypes[12]
+	mi := &file_api_protobuf_messages_proto_msgTypes[14]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1137,7 +1273,7 @@ func (x *PullSingleResponse) String() string {
 func (*PullSingleResponse) ProtoMessage() {}
 
 func (x *PullSingleResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_protobuf_messages_proto_msgTypes[12]
+	mi := &file_api_protobuf_messages_proto_msgTypes[14]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1150,7 +1286,7 @@ func (x *PullSingleResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PullSingleResponse.ProtoReflect.Descriptor instead.
 func (*PullSingleResponse) Descriptor() ([]byte, []int) {
-	return file_api_protobuf_messages_proto_rawDescGZIP(), []int{12}
+	return file_api_protobuf_messages_proto_rawDescGZIP(), []int{14}
 }
 
 func (x *PullSingleResponse) GetItem() *Item {
@@ -1171,7 +1307,7 @@ type PullRequest struct {
 
 func (x *PullRequest) Reset() {
 	*x = PullRequest{}
-	mi := &file_api_protobuf_messages_proto_msgTypes[13]
+	mi := &file_api_protobuf_messages_proto_msgTypes[15]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1183,7 +1319,7 @@ func (x *PullRequest) String() string {
 func (*PullRequest) ProtoMessage() {}
 
 func (x *PullRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_protobuf_messages_proto_msgTypes[13]
+	mi := &file_api_protobuf_messages_proto_msgTypes[15]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1196,7 +1332,7 @@ func (x *PullRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PullRequest.ProtoReflect.Descriptor instead.
 func (*PullRequest) Descriptor() ([]byte, []int) {
-	return file_api_protobuf_messages_proto_rawDescGZIP(), []int{13}
+	return file_api_protobuf_messages_proto_rawDescGZIP(), []int{15}
 }
 
 func (x *PullRequest) GetBatchSize() int32 {
@@ -1223,7 +1359,7 @@ type PullResponse struct {
 
 func (x *PullResponse) Reset() {
 	*x = PullResponse{}
-	mi := &file_api_protobuf_messages_proto_msgTypes[14]
+	mi := &file_api_protobuf_messages_proto_msgTypes[16]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1235,7 +1371,7 @@ func (x *PullResponse) String() string {
 func (*PullResponse) ProtoMessage() {}
 
 func (x *PullResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_protobuf_messages_proto_msgTypes[14]
+	mi := &file_api_protobuf_messages_proto_msgTypes[16]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1248,7 +1384,7 @@ func (x *PullResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PullResponse.ProtoReflect.Descriptor instead.
 func (*PullResponse) Descriptor() ([]byte, []int) {
-	return file_api_protobuf_messages_proto_rawDescGZIP(), []int{14}
+	return file_api_protobuf_messages_proto_rawDescGZIP(), []int{16}
 }
 
 func (x *PullResponse) GetItems() []*Item {
@@ -1268,7 +1404,7 @@ type CommitSingleRequest struct {
 
 func (x *CommitSingleRequest) Reset() {
 	*x = CommitSingleRequest{}
-	mi := &file_api_protobuf_messages_proto_msgTypes[15]
+	mi := &file_api_protobuf_messages_proto_msgTypes[17]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1280,7 +1416,7 @@ func (x *CommitSingleRequest) String() string {
 func (*CommitSingleRequest) ProtoMessage() {}
 
 func (x *CommitSingleRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_protobuf_messages_proto_msgTypes[15]
+	mi := &file_api_protobuf_messages_proto_msgTypes[17]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1293,7 +1429,7 @@ func (x *CommitSingleRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CommitSingleRequest.ProtoReflect.Descriptor instead.
 func (*CommitSingleRequest) Descriptor() ([]byte, []int) {
-	return file_api_protobuf_messages_proto_rawDescGZIP(), []int{15}
+	return file_api_protobuf_messages_proto_rawDescGZIP(), []int{17}
 }
 
 func (x *CommitSingleRequest) GetId() uint64 {
@@ -1313,7 +1449,7 @@ type CommitSingleResponse struct {
 
 func (x *CommitSingleResponse) Reset() {
 	*x = CommitSingleResponse{}
-	mi := &file_api_protobuf_messages_proto_msgTypes[16]
+	mi := &file_api_protobuf_messages_proto_msgTypes[18]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1325,7 +1461,7 @@ func (x *CommitSingleResponse) String() string {
 func (*CommitSingleResponse) ProtoMessage() {}
 
 func (x *CommitSingleResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_protobuf_messages_proto_msgTypes[16]
+	mi := &file_api_protobuf_messages_proto_msgTypes[18]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1338,7 +1474,7 @@ func (x *CommitSingleResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CommitSingleResponse.ProtoReflect.Descriptor instead.
 func (*CommitSingleResponse) Descriptor() ([]byte, []int) {
-	return file_api_protobuf_messages_proto_rawDescGZIP(), []int{16}
+	return file_api_protobuf_messages_proto_rawDescGZIP(), []int{18}
 }
 
 func (x *CommitSingleResponse) GetCommitted() bool {
@@ -1358,7 +1494,7 @@ type CommitRequest struct {
 
 func (x *CommitRequest) Reset() {
 	*x = CommitRequest{}
-	mi := &file_api_protobuf_messages_proto_msgTypes[17]
+	mi := &file_api_protobuf_messages_proto_msgTypes[19]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1370,7 +1506,7 @@ func (x *CommitRequest) String() string {
 func (*CommitRequest) ProtoMessage() {}
 
 func (x *CommitRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_protobuf_messages_proto_msgTypes[17]
+	mi := &file_api_protobuf_messages_proto_msgTypes[19]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1383,7 +1519,7 @@ func (x *CommitRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CommitRequest.ProtoReflect.Descriptor instead.
 func (*CommitRequest) Descriptor() ([]byte, []int) {
-	return file_api_protobuf_messages_proto_rawDescGZIP(), []int{17}
+	return file_api_protobuf_messages_proto_rawDescGZIP(), []int{19}
 }
 
 func (x *CommitRequest) GetIds() []uint64 {
@@ -1403,7 +1539,7 @@ type CommitResponse struct {
 
 func (x *CommitResponse) Reset() {
 	*x = CommitResponse{}
-	mi := &file_api_protobuf_messages_proto_msgTypes[18]
+	mi := &file_api_protobuf_messages_proto_msgTypes[20]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1415,7 +1551,7 @@ func (x *CommitResponse) String() string {
 func (*CommitResponse) ProtoMessage() {}
 
 func (x *CommitResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_protobuf_messages_proto_msgTypes[18]
+	mi := &file_api_protobuf_messages_proto_msgTypes[20]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1428,7 +1564,7 @@ func (x *CommitResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CommitResponse.ProtoReflect.Descriptor instead.
 func (*CommitResponse) Descriptor() ([]byte, []int) {
-	return file_api_protobuf_messages_proto_rawDescGZIP(), []int{18}
+	return file_api_protobuf_messages_proto_rawDescGZIP(), []int{20}
 }
 
 func (x *CommitResponse) GetRet() int32 {
@@ -1448,7 +1584,7 @@ type RequeueSingleRequest struct {
 
 func (x *RequeueSingleRequest) Reset() {
 	*x = RequeueSingleRequest{}
-	mi := &file_api_protobuf_messages_proto_msgTypes[19]
+	mi := &file_api_protobuf_messages_proto_msgTypes[21]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1460,7 +1596,7 @@ func (x *RequeueSingleRequest) String() string {
 func (*RequeueSingleRequest) ProtoMessage() {}
 
 func (x *RequeueSingleRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_protobuf_messages_proto_msgTypes[19]
+	mi := &file_api_protobuf_messages_proto_msgTypes[21]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1473,7 +1609,7 @@ func (x *RequeueSingleRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RequeueSingleRequest.ProtoReflect.Descriptor instead.
 func (*RequeueSingleRequest) Descriptor() ([]byte, []int) {
-	return file_api_protobuf_messages_proto_rawDescGZIP(), []int{19}
+	return file_api_protobuf_messages_proto_rawDescGZIP(), []int{21}
 }
 
 func (x *RequeueSingleRequest) GetItem() *RequeueItem {
@@ -1493,7 +1629,7 @@ type RequeueSingleResponse struct {
 
 func (x *RequeueSingleResponse) Reset() {
 	*x = RequeueSingleResponse{}
-	mi := &file_api_protobuf_messages_proto_msgTypes[20]
+	mi := &file_api_protobuf_messages_proto_msgTypes[22]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1505,7 +1641,7 @@ func (x *RequeueSingleResponse) String() string {
 func (*RequeueSingleResponse) ProtoMessage() {}
 
 func (x *RequeueSingleResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_protobuf_messages_proto_msgTypes[20]
+	mi := &file_api_protobuf_messages_proto_msgTypes[22]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1518,7 +1654,7 @@ func (x *RequeueSingleResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RequeueSingleResponse.ProtoReflect.Descriptor instead.
 func (*RequeueSingleResponse) Descriptor() ([]byte, []int) {
-	return file_api_protobuf_messages_proto_rawDescGZIP(), []int{20}
+	return file_api_protobuf_messages_proto_rawDescGZIP(), []int{22}
 }
 
 func (x *RequeueSingleResponse) GetRequeued() bool {
@@ -1538,7 +1674,7 @@ type RequeueRequest struct {
 
 func (x *RequeueRequest) Reset() {
 	*x = RequeueRequest{}
-	mi := &file_api_protobuf_messages_proto_msgTypes[21]
+	mi := &file_api_protobuf_messages_proto_msgTypes[23]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1550,7 +1686,7 @@ func (x *RequeueRequest) String() string {
 func (*RequeueRequest) ProtoMessage() {}
 
 func (x *RequeueRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_protobuf_messages_proto_msgTypes[21]
+	mi := &file_api_protobuf_messages_proto_msgTypes[23]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1563,7 +1699,7 @@ func (x *RequeueRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RequeueRequest.ProtoReflect.Descriptor instead.
 func (*RequeueRequest) Descriptor() ([]byte, []int) {
-	return file_api_protobuf_messages_proto_rawDescGZIP(), []int{21}
+	return file_api_protobuf_messages_proto_rawDescGZIP(), []int{23}
 }
 
 func (x *RequeueRequest) GetItems() []*RequeueItem {
@@ -1584,7 +1720,7 @@ type RequeueItem struct {
 
 func (x *RequeueItem) Reset() {
 	*x = RequeueItem{}
-	mi := &file_api_protobuf_messages_proto_msgTypes[22]
+	mi := &file_api_protobuf_messages_proto_msgTypes[24]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1596,7 +1732,7 @@ func (x *RequeueItem) String() string {
 func (*RequeueItem) ProtoMessage() {}
 
 func (x *RequeueItem) ProtoReflect() protoreflect.Message {
-	mi := &file_api_protobuf_messages_proto_msgTypes[22]
+	mi := &file_api_protobuf_messages_proto_msgTypes[24]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1609,7 +1745,7 @@ func (x *RequeueItem) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RequeueItem.ProtoReflect.Descriptor instead.
 func (*RequeueItem) Descriptor() ([]byte, []int) {
-	return file_api_protobuf_messages_proto_rawDescGZIP(), []int{22}
+	return file_api_protobuf_messages_proto_rawDescGZIP(), []int{24}
 }
 
 func (x *RequeueItem) GetId() uint64 {
@@ -1636,7 +1772,7 @@ type RequeueResponse struct {
 
 func (x *RequeueResponse) Reset() {
 	*x = RequeueResponse{}
-	mi := &file_api_protobuf_messages_proto_msgTypes[23]
+	mi := &file_api_protobuf_messages_proto_msgTypes[25]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1648,7 +1784,7 @@ func (x *RequeueResponse) String() string {
 func (*RequeueResponse) ProtoMessage() {}
 
 func (x *RequeueResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_protobuf_messages_proto_msgTypes[23]
+	mi := &file_api_protobuf_messages_proto_msgTypes[25]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1661,7 +1797,7 @@ func (x *RequeueResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RequeueResponse.ProtoReflect.Descriptor instead.
 func (*RequeueResponse) Descriptor() ([]byte, []int) {
-	return file_api_protobuf_messages_proto_rawDescGZIP(), []int{23}
+	return file_api_protobuf_messages_proto_rawDescGZIP(), []int{25}
 }
 
 func (x *RequeueResponse) GetRet() int32 {
@@ -1681,7 +1817,7 @@ type DeleteSingleRequest struct {
 
 func (x *DeleteSingleRequest) Reset() {
 	*x = DeleteSingleRequest{}
-	mi := &file_api_protobuf_messages_proto_msgTypes[24]
+	mi := &file_api_protobuf_messages_proto_msgTypes[26]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1693,7 +1829,7 @@ func (x *DeleteSingleRequest) String() string {
 func (*DeleteSingleRequest) ProtoMessage() {}
 
 func (x *DeleteSingleRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_protobuf_messages_proto_msgTypes[24]
+	mi := &file_api_protobuf_messages_proto_msgTypes[26]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1706,7 +1842,7 @@ func (x *DeleteSingleRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteSingleRequest.ProtoReflect.Descriptor instead.
 func (*DeleteSingleRequest) Descriptor() ([]byte, []int) {
-	return file_api_protobuf_messages_proto_rawDescGZIP(), []int{24}
+	return file_api_protobuf_messages_proto_rawDescGZIP(), []int{26}
 }
 
 func (x *DeleteSingleRequest) GetId() uint64 {
@@ -1726,7 +1862,7 @@ type DeleteSingleResponse struct {
 
 func (x *DeleteSingleResponse) Reset() {
 	*x = DeleteSingleResponse{}
-	mi := &file_api_protobuf_messages_proto_msgTypes[25]
+	mi := &file_api_protobuf_messages_proto_msgTypes[27]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1738,7 +1874,7 @@ func (x *DeleteSingleResponse) String() string {
 func (*DeleteSingleResponse) ProtoMessage() {}
 
 func (x *DeleteSingleResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_protobuf_messages_proto_msgTypes[25]
+	mi := &file_api_protobuf_messages_proto_msgTypes[27]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1751,7 +1887,7 @@ func (x *DeleteSingleResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteSingleResponse.ProtoReflect.Descriptor instead.
 func (*DeleteSingleResponse) Descriptor() ([]byte, []int) {
-	return file_api_protobuf_messages_proto_rawDescGZIP(), []int{25}
+	return file_api_protobuf_messages_proto_rawDescGZIP(), []int{27}
 }
 
 func (x *DeleteSingleResponse) GetDeleted() bool {
@@ -1771,7 +1907,7 @@ type DeleteRequest struct {
 
 func (x *DeleteRequest) Reset() {
 	*x = DeleteRequest{}
-	mi := &file_api_protobuf_messages_proto_msgTypes[26]
+	mi := &file_api_protobuf_messages_proto_msgTypes[28]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1783,7 +1919,7 @@ func (x *DeleteRequest) String() string {
 func (*DeleteRequest) ProtoMessage() {}
 
 func (x *DeleteRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_protobuf_messages_proto_msgTypes[26]
+	mi := &file_api_protobuf_messages_proto_msgTypes[28]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1796,7 +1932,7 @@ func (x *DeleteRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteRequest.ProtoReflect.Descriptor instead.
 func (*DeleteRequest) Descriptor() ([]byte, []int) {
-	return file_api_protobuf_messages_proto_rawDescGZIP(), []int{26}
+	return file_api_protobuf_messages_proto_rawDescGZIP(), []int{28}
 }
 
 func (x *DeleteRequest) GetIds() []uint64 {
@@ -1816,7 +1952,7 @@ type DeleteResponse struct {
 
 func (x *DeleteResponse) Reset() {
 	*x = DeleteResponse{}
-	mi := &file_api_protobuf_messages_proto_msgTypes[27]
+	mi := &file_api_protobuf_messages_proto_msgTypes[29]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1828,7 +1964,7 @@ func (x *DeleteResponse) String() string {
 func (*DeleteResponse) ProtoMessage() {}
 
 func (x *DeleteResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_protobuf_messages_proto_msgTypes[27]
+	mi := &file_api_protobuf_messages_proto_msgTypes[29]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1841,7 +1977,7 @@ func (x *DeleteResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteResponse.ProtoReflect.Descriptor instead.
 func (*DeleteResponse) Descriptor() ([]byte, []int) {
-	return file_api_protobuf_messages_proto_rawDescGZIP(), []int{27}
+	return file_api_protobuf_messages_proto_rawDescGZIP(), []int{29}
 }
 
 func (x *DeleteResponse) GetRet() int32 {
@@ -1866,7 +2002,7 @@ type CreateQueueRequest struct {
 
 func (x *CreateQueueRequest) Reset() {
 	*x = CreateQueueRequest{}
-	mi := &file_api_protobuf_messages_proto_msgTypes[28]
+	mi := &file_api_protobuf_messages_proto_msgTypes[30]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1878,7 +2014,7 @@ func (x *CreateQueueRequest) String() string {
 func (*CreateQueueRequest) ProtoMessage() {}
 
 func (x *CreateQueueRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_protobuf_messages_proto_msgTypes[28]
+	mi := &file_api_protobuf_messages_proto_msgTypes[30]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1891,7 +2027,7 @@ func (x *CreateQueueRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateQueueRequest.ProtoReflect.Descriptor instead.
 func (*CreateQueueRequest) Descriptor() ([]byte, []int) {
-	return file_api_protobuf_messages_proto_rawDescGZIP(), []int{28}
+	return file_api_protobuf_messages_proto_rawDescGZIP(), []int{30}
 }
 
 func (x *CreateQueueRequest) GetQueueName() string {
@@ -1927,7 +2063,7 @@ type ResizeQueueRequest struct {
 
 func (x *ResizeQueueRequest) Reset() {
 	*x = ResizeQueueRequest{}
-	mi := &file_api_protobuf_messages_proto_msgTypes[29]
+	mi := &file_api_protobuf_messages_proto_msgTypes[31]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1939,7 +2075,7 @@ func (x *ResizeQueueRequest) String() string {
 func (*ResizeQueueRequest) ProtoMessage() {}
 
 func (x *ResizeQueueRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_protobuf_messages_proto_msgTypes[29]
+	mi := &file_api_protobuf_messages_proto_msgTypes[31]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1952,7 +2088,7 @@ func (x *ResizeQueueRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ResizeQueueRequest.ProtoReflect.Descriptor instead.
 func (*ResizeQueueRequest) Descriptor() ([]byte, []int) {
-	return file_api_protobuf_messages_proto_rawDescGZIP(), []int{29}
+	return file_api_protobuf_messages_proto_rawDescGZIP(), []int{31}
 }
 
 func (x *ResizeQueueRequest) GetQueueName() string {
@@ -1979,7 +2115,7 @@ type DeleteQueueRequest struct {
 
 func (x *DeleteQueueRequest) Reset() {
 	*x = DeleteQueueRequest{}
-	mi := &file_api_protobuf_messages_proto_msgTypes[30]
+	mi := &file_api_protobuf_messages_proto_msgTypes[32]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1991,7 +2127,7 @@ func (x *DeleteQueueRequest) String() string {
 func (*DeleteQueueRequest) ProtoMessage() {}
 
 func (x *DeleteQueueRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_protobuf_messages_proto_msgTypes[30]
+	mi := &file_api_protobuf_messages_proto_msgTypes[32]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2004,7 +2140,7 @@ func (x *DeleteQueueRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteQueueRequest.ProtoReflect.Descriptor instead.
 func (*DeleteQueueRequest) Descriptor() ([]byte, []int) {
-	return file_api_protobuf_messages_proto_rawDescGZIP(), []int{30}
+	return file_api_protobuf_messages_proto_rawDescGZIP(), []int{32}
 }
 
 func (x *DeleteQueueRequest) GetQueueName() string {
@@ -2024,7 +2160,7 @@ type ListQueuesResponse struct {
 
 func (x *ListQueuesResponse) Reset() {
 	*x = ListQueuesResponse{}
-	mi := &file_api_protobuf_messages_proto_msgTypes[31]
+	mi := &file_api_protobuf_messages_proto_msgTypes[33]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2036,7 +2172,7 @@ func (x *ListQueuesResponse) String() string {
 func (*ListQueuesResponse) ProtoMessage() {}
 
 func (x *ListQueuesResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_protobuf_messages_proto_msgTypes[31]
+	mi := &file_api_protobuf_messages_proto_msgTypes[33]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2049,7 +2185,7 @@ func (x *ListQueuesResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListQueuesResponse.ProtoReflect.Descriptor instead.
 func (*ListQueuesResponse) Descriptor() ([]byte, []int) {
-	return file_api_protobuf_messages_proto_rawDescGZIP(), []int{31}
+	return file_api_protobuf_messages_proto_rawDescGZIP(), []int{33}
 }
 
 func (x *ListQueuesResponse) GetQueues() []*ListQueueItem {
@@ -2080,7 +2216,7 @@ type ListQueueItem struct {
 
 func (x *ListQueueItem) Reset() {
 	*x = ListQueueItem{}
-	mi := &file_api_protobuf_messages_proto_msgTypes[32]
+	mi := &file_api_protobuf_messages_proto_msgTypes[34]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2092,7 +2228,7 @@ func (x *ListQueueItem) String() string {
 func (*ListQueueItem) ProtoMessage() {}
 
 func (x *ListQueueItem) ProtoReflect() protoreflect.Message {
-	mi := &file_api_protobuf_messages_proto_msgTypes[32]
+	mi := &file_api_protobuf_messages_proto_msgTypes[34]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2105,7 +2241,7 @@ func (x *ListQueueItem) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListQueueItem.ProtoReflect.Descriptor instead.
 func (*ListQueueItem) Descriptor() ([]byte, []int) {
-	return file_api_protobuf_messages_proto_rawDescGZIP(), []int{32}
+	return file_api_protobuf_messages_proto_rawDescGZIP(), []int{34}
 }
 
 func (x *ListQueueItem) GetQueueName() string {
@@ -2160,7 +2296,7 @@ type PauseQueueRequest struct {
 
 func (x *PauseQueueRequest) Reset() {
 	*x = PauseQueueRequest{}
-	mi := &file_api_protobuf_messages_proto_msgTypes[33]
+	mi := &file_api_protobuf_messages_proto_msgTypes[35]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2172,7 +2308,7 @@ func (x *PauseQueueRequest) String() string {
 func (*PauseQueueRequest) ProtoMessage() {}
 
 func (x *PauseQueueRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_protobuf_messages_proto_msgTypes[33]
+	mi := &file_api_protobuf_messages_proto_msgTypes[35]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2185,7 +2321,7 @@ func (x *PauseQueueRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PauseQueueRequest.ProtoReflect.Descriptor instead.
 func (*PauseQueueRequest) Descriptor() ([]byte, []int) {
-	return file_api_protobuf_messages_proto_rawDescGZIP(), []int{33}
+	return file_api_protobuf_messages_proto_rawDescGZIP(), []int{35}
 }
 
 func (x *PauseQueueRequest) GetQueueName() string {
@@ -2205,7 +2341,7 @@ type ResumeQueueRequest struct {
 
 func (x *ResumeQueueRequest) Reset() {
 	*x = ResumeQueueRequest{}
-	mi := &file_api_protobuf_messages_proto_msgTypes[34]
+	mi := &file_api_protobuf_messages_proto_msgTypes[36]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2217,7 +2353,7 @@ func (x *ResumeQueueRequest) String() string {
 func (*ResumeQueueRequest) ProtoMessage() {}
 
 func (x *ResumeQueueRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_protobuf_messages_proto_msgTypes[34]
+	mi := &file_api_protobuf_messages_proto_msgTypes[36]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2230,7 +2366,7 @@ func (x *ResumeQueueRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ResumeQueueRequest.ProtoReflect.Descriptor instead.
 func (*ResumeQueueRequest) Descriptor() ([]byte, []int) {
-	return file_api_protobuf_messages_proto_rawDescGZIP(), []int{34}
+	return file_api_protobuf_messages_proto_rawDescGZIP(), []int{36}
 }
 
 func (x *ResumeQueueRequest) GetQueueName() string {
@@ -2250,7 +2386,7 @@ type CreateStorageRequest struct {
 
 func (x *CreateStorageRequest) Reset() {
 	*x = CreateStorageRequest{}
-	mi := &file_api_protobuf_messages_proto_msgTypes[35]
+	mi := &file_api_protobuf_messages_proto_msgTypes[37]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2262,7 +2398,7 @@ func (x *CreateStorageRequest) String() string {
 func (*CreateStorageRequest) ProtoMessage() {}
 
 func (x *CreateStorageRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_protobuf_messages_proto_msgTypes[35]
+	mi := &file_api_protobuf_messages_proto_msgTypes[37]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2275,7 +2411,7 @@ func (x *CreateStorageRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateStorageRequest.ProtoReflect.Descriptor instead.
 func (*CreateStorageRequest) Descriptor() ([]byte, []int) {
-	return file_api_protobuf_messages_proto_rawDescGZIP(), []int{35}
+	return file_api_protobuf_messages_proto_rawDescGZIP(), []int{37}
 }
 
 func (x *CreateStorageRequest) GetStorageName() string {
@@ -2294,7 +2430,7 @@ type DeleteStorageRequest struct {
 
 func (x *DeleteStorageRequest) Reset() {
 	*x = DeleteStorageRequest{}
-	mi := &file_api_protobuf_messages_proto_msgTypes[36]
+	mi := &file_api_protobuf_messages_proto_msgTypes[38]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2306,7 +2442,7 @@ func (x *DeleteStorageRequest) String() string {
 func (*DeleteStorageRequest) ProtoMessage() {}
 
 func (x *DeleteStorageRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_protobuf_messages_proto_msgTypes[36]
+	mi := &file_api_protobuf_messages_proto_msgTypes[38]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2319,7 +2455,7 @@ func (x *DeleteStorageRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteStorageRequest.ProtoReflect.Descriptor instead.
 func (*DeleteStorageRequest) Descriptor() ([]byte, []int) {
-	return file_api_protobuf_messages_proto_rawDescGZIP(), []int{36}
+	return file_api_protobuf_messages_proto_rawDescGZIP(), []int{38}
 }
 
 func (x *DeleteStorageRequest) GetStorageName() string {
@@ -2338,7 +2474,7 @@ type ListStoragesResponse struct {
 
 func (x *ListStoragesResponse) Reset() {
 	*x = ListStoragesResponse{}
-	mi := &file_api_protobuf_messages_proto_msgTypes[37]
+	mi := &file_api_protobuf_messages_proto_msgTypes[39]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2350,7 +2486,7 @@ func (x *ListStoragesResponse) String() string {
 func (*ListStoragesResponse) ProtoMessage() {}
 
 func (x *ListStoragesResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_protobuf_messages_proto_msgTypes[37]
+	mi := &file_api_protobuf_messages_proto_msgTypes[39]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2363,7 +2499,7 @@ func (x *ListStoragesResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListStoragesResponse.ProtoReflect.Descriptor instead.
 func (*ListStoragesResponse) Descriptor() ([]byte, []int) {
-	return file_api_protobuf_messages_proto_rawDescGZIP(), []int{37}
+	return file_api_protobuf_messages_proto_rawDescGZIP(), []int{39}
 }
 
 func (x *ListStoragesResponse) GetStorages() []*ListStorageItem {
@@ -2385,7 +2521,7 @@ type ListStorageItem struct {
 
 func (x *ListStorageItem) Reset() {
 	*x = ListStorageItem{}
-	mi := &file_api_protobuf_messages_proto_msgTypes[38]
+	mi := &file_api_protobuf_messages_proto_msgTypes[40]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2397,7 +2533,7 @@ func (x *ListStorageItem) String() string {
 func (*ListStorageItem) ProtoMessage() {}
 
 func (x *ListStorageItem) ProtoReflect() protoreflect.Message {
-	mi := &file_api_protobuf_messages_proto_msgTypes[38]
+	mi := &file_api_protobuf_messages_proto_msgTypes[40]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2410,7 +2546,7 @@ func (x *ListStorageItem) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListStorageItem.ProtoReflect.Descriptor instead.
 func (*ListStorageItem) Descriptor() ([]byte, []int) {
-	return file_api_protobuf_messages_proto_rawDescGZIP(), []int{38}
+	return file_api_protobuf_messages_proto_rawDescGZIP(), []int{40}
 }
 
 func (x *ListStorageItem) GetStorageName() string {
@@ -2448,6 +2584,7 @@ type StorageRequest struct {
 	//	*StorageRequest_ReleaseId
 	//	*StorageRequest_GetKeys
 	//	*StorageRequest_GetKeysNext
+	//	*StorageRequest_GetInfo
 	Command       isStorageRequest_Command `protobuf_oneof:"command"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -2455,7 +2592,7 @@ type StorageRequest struct {
 
 func (x *StorageRequest) Reset() {
 	*x = StorageRequest{}
-	mi := &file_api_protobuf_messages_proto_msgTypes[39]
+	mi := &file_api_protobuf_messages_proto_msgTypes[41]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2467,7 +2604,7 @@ func (x *StorageRequest) String() string {
 func (*StorageRequest) ProtoMessage() {}
 
 func (x *StorageRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_protobuf_messages_proto_msgTypes[39]
+	mi := &file_api_protobuf_messages_proto_msgTypes[41]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2480,7 +2617,7 @@ func (x *StorageRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use StorageRequest.ProtoReflect.Descriptor instead.
 func (*StorageRequest) Descriptor() ([]byte, []int) {
-	return file_api_protobuf_messages_proto_rawDescGZIP(), []int{39}
+	return file_api_protobuf_messages_proto_rawDescGZIP(), []int{41}
 }
 
 func (x *StorageRequest) GetCorrelationId() uint64 {
@@ -2578,6 +2715,15 @@ func (x *StorageRequest) GetGetKeysNext() *StorageGetKeysNextRequest {
 	return nil
 }
 
+func (x *StorageRequest) GetGetInfo() *StorageGetInfoRequest {
+	if x != nil {
+		if x, ok := x.Command.(*StorageRequest_GetInfo); ok {
+			return x.GetInfo
+		}
+	}
+	return nil
+}
+
 type isStorageRequest_Command interface {
 	isStorageRequest_Command()
 }
@@ -2618,6 +2764,10 @@ type StorageRequest_GetKeysNext struct {
 	GetKeysNext *StorageGetKeysNextRequest `protobuf:"bytes,10,opt,name=get_keys_next,json=getKeysNext,proto3,oneof"`
 }
 
+type StorageRequest_GetInfo struct {
+	GetInfo *StorageGetInfoRequest `protobuf:"bytes,11,opt,name=get_info,json=getInfo,proto3,oneof"`
+}
+
 func (*StorageRequest_Setup) isStorageRequest_Command() {}
 
 func (*StorageRequest_Noop) isStorageRequest_Command() {}
@@ -2636,6 +2786,8 @@ func (*StorageRequest_GetKeys) isStorageRequest_Command() {}
 
 func (*StorageRequest_GetKeysNext) isStorageRequest_Command() {}
 
+func (*StorageRequest_GetInfo) isStorageRequest_Command() {}
+
 type StorageResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	CorrelationId uint64                 `protobuf:"varint,1,opt,name=correlation_id,json=correlationId,proto3" json:"correlation_id,omitempty"`
@@ -2644,6 +2796,7 @@ type StorageResponse struct {
 	//	*StorageResponse_Status
 	//	*StorageResponse_DataResponse
 	//	*StorageResponse_GetKeysResponse
+	//	*StorageResponse_GetInfoResponse
 	Response      isStorageResponse_Response `protobuf_oneof:"response"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -2651,7 +2804,7 @@ type StorageResponse struct {
 
 func (x *StorageResponse) Reset() {
 	*x = StorageResponse{}
-	mi := &file_api_protobuf_messages_proto_msgTypes[40]
+	mi := &file_api_protobuf_messages_proto_msgTypes[42]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2663,7 +2816,7 @@ func (x *StorageResponse) String() string {
 func (*StorageResponse) ProtoMessage() {}
 
 func (x *StorageResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_protobuf_messages_proto_msgTypes[40]
+	mi := &file_api_protobuf_messages_proto_msgTypes[42]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2676,7 +2829,7 @@ func (x *StorageResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use StorageResponse.ProtoReflect.Descriptor instead.
 func (*StorageResponse) Descriptor() ([]byte, []int) {
-	return file_api_protobuf_messages_proto_rawDescGZIP(), []int{40}
+	return file_api_protobuf_messages_proto_rawDescGZIP(), []int{42}
 }
 
 func (x *StorageResponse) GetCorrelationId() uint64 {
@@ -2720,6 +2873,15 @@ func (x *StorageResponse) GetGetKeysResponse() *StorageGetKeysResponse {
 	return nil
 }
 
+func (x *StorageResponse) GetGetInfoResponse() *StorageGetInfoResponse {
+	if x != nil {
+		if x, ok := x.Response.(*StorageResponse_GetInfoResponse); ok {
+			return x.GetInfoResponse
+		}
+	}
+	return nil
+}
+
 type isStorageResponse_Response interface {
 	isStorageResponse_Response()
 }
@@ -2736,11 +2898,105 @@ type StorageResponse_GetKeysResponse struct {
 	GetKeysResponse *StorageGetKeysResponse `protobuf:"bytes,4,opt,name=get_keys_response,json=getKeysResponse,proto3,oneof"`
 }
 
+type StorageResponse_GetInfoResponse struct {
+	GetInfoResponse *StorageGetInfoResponse `protobuf:"bytes,5,opt,name=get_info_response,json=getInfoResponse,proto3,oneof"`
+}
+
 func (*StorageResponse_Status) isStorageResponse_Response() {}
 
 func (*StorageResponse_DataResponse) isStorageResponse_Response() {}
 
 func (*StorageResponse_GetKeysResponse) isStorageResponse_Response() {}
+
+func (*StorageResponse_GetInfoResponse) isStorageResponse_Response() {}
+
+type StorageGetInfoRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *StorageGetInfoRequest) Reset() {
+	*x = StorageGetInfoRequest{}
+	mi := &file_api_protobuf_messages_proto_msgTypes[43]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *StorageGetInfoRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*StorageGetInfoRequest) ProtoMessage() {}
+
+func (x *StorageGetInfoRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_api_protobuf_messages_proto_msgTypes[43]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use StorageGetInfoRequest.ProtoReflect.Descriptor instead.
+func (*StorageGetInfoRequest) Descriptor() ([]byte, []int) {
+	return file_api_protobuf_messages_proto_rawDescGZIP(), []int{43}
+}
+
+type StorageGetInfoResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Count         uint32                 `protobuf:"varint,1,opt,name=count,proto3" json:"count,omitempty"`
+	Active        uint32                 `protobuf:"varint,2,opt,name=active,proto3" json:"active,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *StorageGetInfoResponse) Reset() {
+	*x = StorageGetInfoResponse{}
+	mi := &file_api_protobuf_messages_proto_msgTypes[44]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *StorageGetInfoResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*StorageGetInfoResponse) ProtoMessage() {}
+
+func (x *StorageGetInfoResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_api_protobuf_messages_proto_msgTypes[44]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use StorageGetInfoResponse.ProtoReflect.Descriptor instead.
+func (*StorageGetInfoResponse) Descriptor() ([]byte, []int) {
+	return file_api_protobuf_messages_proto_rawDescGZIP(), []int{44}
+}
+
+func (x *StorageGetInfoResponse) GetCount() uint32 {
+	if x != nil {
+		return x.Count
+	}
+	return 0
+}
+
+func (x *StorageGetInfoResponse) GetActive() uint32 {
+	if x != nil {
+		return x.Active
+	}
+	return 0
+}
 
 type StorageSetupRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
@@ -2751,7 +3007,7 @@ type StorageSetupRequest struct {
 
 func (x *StorageSetupRequest) Reset() {
 	*x = StorageSetupRequest{}
-	mi := &file_api_protobuf_messages_proto_msgTypes[41]
+	mi := &file_api_protobuf_messages_proto_msgTypes[45]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2763,7 +3019,7 @@ func (x *StorageSetupRequest) String() string {
 func (*StorageSetupRequest) ProtoMessage() {}
 
 func (x *StorageSetupRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_protobuf_messages_proto_msgTypes[41]
+	mi := &file_api_protobuf_messages_proto_msgTypes[45]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2776,7 +3032,7 @@ func (x *StorageSetupRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use StorageSetupRequest.ProtoReflect.Descriptor instead.
 func (*StorageSetupRequest) Descriptor() ([]byte, []int) {
-	return file_api_protobuf_messages_proto_rawDescGZIP(), []int{41}
+	return file_api_protobuf_messages_proto_rawDescGZIP(), []int{45}
 }
 
 func (x *StorageSetupRequest) GetStorageName() string {
@@ -2798,7 +3054,7 @@ type StorageSetRequest struct {
 
 func (x *StorageSetRequest) Reset() {
 	*x = StorageSetRequest{}
-	mi := &file_api_protobuf_messages_proto_msgTypes[42]
+	mi := &file_api_protobuf_messages_proto_msgTypes[46]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2810,7 +3066,7 @@ func (x *StorageSetRequest) String() string {
 func (*StorageSetRequest) ProtoMessage() {}
 
 func (x *StorageSetRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_protobuf_messages_proto_msgTypes[42]
+	mi := &file_api_protobuf_messages_proto_msgTypes[46]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2823,7 +3079,7 @@ func (x *StorageSetRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use StorageSetRequest.ProtoReflect.Descriptor instead.
 func (*StorageSetRequest) Descriptor() ([]byte, []int) {
-	return file_api_protobuf_messages_proto_rawDescGZIP(), []int{42}
+	return file_api_protobuf_messages_proto_rawDescGZIP(), []int{46}
 }
 
 func (x *StorageSetRequest) GetKey() []byte {
@@ -2863,7 +3119,7 @@ type StorageGetRequest struct {
 
 func (x *StorageGetRequest) Reset() {
 	*x = StorageGetRequest{}
-	mi := &file_api_protobuf_messages_proto_msgTypes[43]
+	mi := &file_api_protobuf_messages_proto_msgTypes[47]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2875,7 +3131,7 @@ func (x *StorageGetRequest) String() string {
 func (*StorageGetRequest) ProtoMessage() {}
 
 func (x *StorageGetRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_protobuf_messages_proto_msgTypes[43]
+	mi := &file_api_protobuf_messages_proto_msgTypes[47]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2888,7 +3144,7 @@ func (x *StorageGetRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use StorageGetRequest.ProtoReflect.Descriptor instead.
 func (*StorageGetRequest) Descriptor() ([]byte, []int) {
-	return file_api_protobuf_messages_proto_rawDescGZIP(), []int{43}
+	return file_api_protobuf_messages_proto_rawDescGZIP(), []int{47}
 }
 
 func (x *StorageGetRequest) GetKey() []byte {
@@ -2907,7 +3163,7 @@ type StorageDeleteRequest struct {
 
 func (x *StorageDeleteRequest) Reset() {
 	*x = StorageDeleteRequest{}
-	mi := &file_api_protobuf_messages_proto_msgTypes[44]
+	mi := &file_api_protobuf_messages_proto_msgTypes[48]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2919,7 +3175,7 @@ func (x *StorageDeleteRequest) String() string {
 func (*StorageDeleteRequest) ProtoMessage() {}
 
 func (x *StorageDeleteRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_protobuf_messages_proto_msgTypes[44]
+	mi := &file_api_protobuf_messages_proto_msgTypes[48]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2932,7 +3188,7 @@ func (x *StorageDeleteRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use StorageDeleteRequest.ProtoReflect.Descriptor instead.
 func (*StorageDeleteRequest) Descriptor() ([]byte, []int) {
-	return file_api_protobuf_messages_proto_rawDescGZIP(), []int{44}
+	return file_api_protobuf_messages_proto_rawDescGZIP(), []int{48}
 }
 
 func (x *StorageDeleteRequest) GetKey() []byte {
@@ -2951,7 +3207,7 @@ type StorageLockAnyWithIdRequest struct {
 
 func (x *StorageLockAnyWithIdRequest) Reset() {
 	*x = StorageLockAnyWithIdRequest{}
-	mi := &file_api_protobuf_messages_proto_msgTypes[45]
+	mi := &file_api_protobuf_messages_proto_msgTypes[49]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2963,7 +3219,7 @@ func (x *StorageLockAnyWithIdRequest) String() string {
 func (*StorageLockAnyWithIdRequest) ProtoMessage() {}
 
 func (x *StorageLockAnyWithIdRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_protobuf_messages_proto_msgTypes[45]
+	mi := &file_api_protobuf_messages_proto_msgTypes[49]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2976,7 +3232,7 @@ func (x *StorageLockAnyWithIdRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use StorageLockAnyWithIdRequest.ProtoReflect.Descriptor instead.
 func (*StorageLockAnyWithIdRequest) Descriptor() ([]byte, []int) {
-	return file_api_protobuf_messages_proto_rawDescGZIP(), []int{45}
+	return file_api_protobuf_messages_proto_rawDescGZIP(), []int{49}
 }
 
 func (x *StorageLockAnyWithIdRequest) GetTimeout() *durationpb.Duration {
@@ -2996,7 +3252,7 @@ type StorageReleaseIdRequest struct {
 
 func (x *StorageReleaseIdRequest) Reset() {
 	*x = StorageReleaseIdRequest{}
-	mi := &file_api_protobuf_messages_proto_msgTypes[46]
+	mi := &file_api_protobuf_messages_proto_msgTypes[50]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3008,7 +3264,7 @@ func (x *StorageReleaseIdRequest) String() string {
 func (*StorageReleaseIdRequest) ProtoMessage() {}
 
 func (x *StorageReleaseIdRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_protobuf_messages_proto_msgTypes[46]
+	mi := &file_api_protobuf_messages_proto_msgTypes[50]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3021,7 +3277,7 @@ func (x *StorageReleaseIdRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use StorageReleaseIdRequest.ProtoReflect.Descriptor instead.
 func (*StorageReleaseIdRequest) Descriptor() ([]byte, []int) {
-	return file_api_protobuf_messages_proto_rawDescGZIP(), []int{46}
+	return file_api_protobuf_messages_proto_rawDescGZIP(), []int{50}
 }
 
 func (x *StorageReleaseIdRequest) GetId() uint64 {
@@ -3047,7 +3303,7 @@ type StorageGetKeysRequest struct {
 
 func (x *StorageGetKeysRequest) Reset() {
 	*x = StorageGetKeysRequest{}
-	mi := &file_api_protobuf_messages_proto_msgTypes[47]
+	mi := &file_api_protobuf_messages_proto_msgTypes[51]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3059,7 +3315,7 @@ func (x *StorageGetKeysRequest) String() string {
 func (*StorageGetKeysRequest) ProtoMessage() {}
 
 func (x *StorageGetKeysRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_protobuf_messages_proto_msgTypes[47]
+	mi := &file_api_protobuf_messages_proto_msgTypes[51]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3072,7 +3328,7 @@ func (x *StorageGetKeysRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use StorageGetKeysRequest.ProtoReflect.Descriptor instead.
 func (*StorageGetKeysRequest) Descriptor() ([]byte, []int) {
-	return file_api_protobuf_messages_proto_rawDescGZIP(), []int{47}
+	return file_api_protobuf_messages_proto_rawDescGZIP(), []int{51}
 }
 
 func (x *StorageGetKeysRequest) GetActiveIncluded() bool {
@@ -3090,7 +3346,7 @@ type StorageGetKeysNextRequest struct {
 
 func (x *StorageGetKeysNextRequest) Reset() {
 	*x = StorageGetKeysNextRequest{}
-	mi := &file_api_protobuf_messages_proto_msgTypes[48]
+	mi := &file_api_protobuf_messages_proto_msgTypes[52]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3102,7 +3358,7 @@ func (x *StorageGetKeysNextRequest) String() string {
 func (*StorageGetKeysNextRequest) ProtoMessage() {}
 
 func (x *StorageGetKeysNextRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_protobuf_messages_proto_msgTypes[48]
+	mi := &file_api_protobuf_messages_proto_msgTypes[52]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3115,7 +3371,7 @@ func (x *StorageGetKeysNextRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use StorageGetKeysNextRequest.ProtoReflect.Descriptor instead.
 func (*StorageGetKeysNextRequest) Descriptor() ([]byte, []int) {
-	return file_api_protobuf_messages_proto_rawDescGZIP(), []int{48}
+	return file_api_protobuf_messages_proto_rawDescGZIP(), []int{52}
 }
 
 type StorageDataResponse struct {
@@ -3129,7 +3385,7 @@ type StorageDataResponse struct {
 
 func (x *StorageDataResponse) Reset() {
 	*x = StorageDataResponse{}
-	mi := &file_api_protobuf_messages_proto_msgTypes[49]
+	mi := &file_api_protobuf_messages_proto_msgTypes[53]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3141,7 +3397,7 @@ func (x *StorageDataResponse) String() string {
 func (*StorageDataResponse) ProtoMessage() {}
 
 func (x *StorageDataResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_protobuf_messages_proto_msgTypes[49]
+	mi := &file_api_protobuf_messages_proto_msgTypes[53]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3154,7 +3410,7 @@ func (x *StorageDataResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use StorageDataResponse.ProtoReflect.Descriptor instead.
 func (*StorageDataResponse) Descriptor() ([]byte, []int) {
-	return file_api_protobuf_messages_proto_rawDescGZIP(), []int{49}
+	return file_api_protobuf_messages_proto_rawDescGZIP(), []int{53}
 }
 
 func (x *StorageDataResponse) GetId() uint64 {
@@ -3188,7 +3444,7 @@ type StorageGetKeysResponse struct {
 
 func (x *StorageGetKeysResponse) Reset() {
 	*x = StorageGetKeysResponse{}
-	mi := &file_api_protobuf_messages_proto_msgTypes[50]
+	mi := &file_api_protobuf_messages_proto_msgTypes[54]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3200,7 +3456,7 @@ func (x *StorageGetKeysResponse) String() string {
 func (*StorageGetKeysResponse) ProtoMessage() {}
 
 func (x *StorageGetKeysResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_protobuf_messages_proto_msgTypes[50]
+	mi := &file_api_protobuf_messages_proto_msgTypes[54]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3213,7 +3469,7 @@ func (x *StorageGetKeysResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use StorageGetKeysResponse.ProtoReflect.Descriptor instead.
 func (*StorageGetKeysResponse) Descriptor() ([]byte, []int) {
-	return file_api_protobuf_messages_proto_rawDescGZIP(), []int{50}
+	return file_api_protobuf_messages_proto_rawDescGZIP(), []int{54}
 }
 
 func (x *StorageGetKeysResponse) GetKeys() [][]byte {
@@ -3246,7 +3502,7 @@ const file_api_protobuf_messages_proto_rawDesc = "" +
 	"\x03key\x18\x03 \x01(\fR\x03key\x12\x14\n" +
 	"\x05value\x18\x04 \x01(\fR\x05value\x12\x1f\n" +
 	"\bcompress\x18\x05 \x01(\bH\x00R\bcompress\x88\x01\x01B\v\n" +
-	"\t_compress\"\xcf\a\n" +
+	"\t_compress\"\xa8\b\n" +
 	"\fQueueRequest\x12%\n" +
 	"\x0ecorrelation_id\x18\x01 \x01(\x04R\rcorrelationId\x12@\n" +
 	"\x05setup\x18\x02 \x01(\v2(.io.clbs.octopusmq.protobuf.SetupRequestH\x00R\x05setup\x12=\n" +
@@ -3262,8 +3518,9 @@ const file_api_protobuf_messages_proto_rawDesc = "" +
 	" \x01(\v2*.io.clbs.octopusmq.protobuf.RequeueRequestH\x00R\arequeue\x12V\n" +
 	"\rdelete_single\x18\v \x01(\v2/.io.clbs.octopusmq.protobuf.DeleteSingleRequestH\x00R\fdeleteSingle\x12C\n" +
 	"\x06delete\x18\f \x01(\v2).io.clbs.octopusmq.protobuf.DeleteRequestH\x00R\x06delete\x12V\n" +
-	"\rbatch_enqueue\x18\r \x01(\v2/.io.clbs.octopusmq.protobuf.BatchEnqueueRequestH\x00R\fbatchEnqueueB\t\n" +
-	"\acommand\"\xa0\a\n" +
+	"\rbatch_enqueue\x18\r \x01(\v2/.io.clbs.octopusmq.protobuf.BatchEnqueueRequestH\x00R\fbatchEnqueue\x12W\n" +
+	"\x0eget_queue_info\x18\x0e \x01(\v2/.io.clbs.octopusmq.protobuf.GetQueueInfoRequestH\x00R\fgetQueueInfoB\t\n" +
+	"\acommand\"\xfa\a\n" +
 	"\rQueueResponse\x12%\n" +
 	"\x0ecorrelation_id\x18\x01 \x01(\x04R\rcorrelationId\x12D\n" +
 	"\x06status\x18\x02 \x01(\v2*.io.clbs.octopusmq.protobuf.StatusResponseH\x00R\x06status\x12G\n" +
@@ -3278,7 +3535,8 @@ const file_api_protobuf_messages_proto_rawDesc = "" +
 	"\rdelete_single\x18\n" +
 	" \x01(\v20.io.clbs.octopusmq.protobuf.DeleteSingleResponseH\x00R\fdeleteSingle\x12D\n" +
 	"\x06delete\x18\v \x01(\v2*.io.clbs.octopusmq.protobuf.DeleteResponseH\x00R\x06delete\x12W\n" +
-	"\rbatch_enqueue\x18\f \x01(\v20.io.clbs.octopusmq.protobuf.BatchEnqueueResponseH\x00R\fbatchEnqueueB\n" +
+	"\rbatch_enqueue\x18\f \x01(\v20.io.clbs.octopusmq.protobuf.BatchEnqueueResponseH\x00R\fbatchEnqueue\x12X\n" +
+	"\x0eget_queue_info\x18\r \x01(\v20.io.clbs.octopusmq.protobuf.GetQueueInfoResponseH\x00R\fgetQueueInfoB\n" +
 	"\n" +
 	"\bresponse\"-\n" +
 	"\fSetupRequest\x12\x1d\n" +
@@ -3287,7 +3545,15 @@ const file_api_protobuf_messages_proto_rawDesc = "" +
 	"\vNoopRequest\"f\n" +
 	"\x0eStatusResponse\x12:\n" +
 	"\x04code\x18\x01 \x01(\x0e2&.io.clbs.octopusmq.protobuf.StatusCodeR\x04code\x12\x18\n" +
-	"\amessage\x18\x02 \x01(\tR\amessage\"\x80\x01\n" +
+	"\amessage\x18\x02 \x01(\tR\amessage\"\x15\n" +
+	"\x13GetQueueInfoRequest\"\x81\x01\n" +
+	"\x14GetQueueInfoResponse\x12\x19\n" +
+	"\bmax_size\x18\x01 \x01(\rR\amaxSize\x12\x16\n" +
+	"\x06length\x18\x02 \x01(\rR\x06length\x12\x16\n" +
+	"\x06active\x18\x03 \x01(\rR\x06active\x12\x1e\n" +
+	"\n" +
+	"priorities\x18\x04 \x01(\rR\n" +
+	"priorities\"\x80\x01\n" +
 	"\x0eEnqueueRequest\x129\n" +
 	"\x04item\x18\x01 \x01(\v2%.io.clbs.octopusmq.protobuf.InputItemR\x04item\x123\n" +
 	"\atimeout\x18\x02 \x01(\v2\x19.google.protobuf.DurationR\atimeout\"\x87\x01\n" +
@@ -3376,7 +3642,7 @@ const file_api_protobuf_messages_proto_rawDesc = "" +
 	"\x0fListStorageItem\x12!\n" +
 	"\fstorage_name\x18\x01 \x01(\tR\vstorageName\x12\x14\n" +
 	"\x05count\x18\x02 \x01(\rR\x05count\x12\x16\n" +
-	"\x06active\x18\x03 \x01(\rR\x06active\"\x83\x06\n" +
+	"\x06active\x18\x03 \x01(\rR\x06active\"\xd3\x06\n" +
 	"\x0eStorageRequest\x12%\n" +
 	"\x0ecorrelation_id\x18\x01 \x01(\x04R\rcorrelationId\x12G\n" +
 	"\x05setup\x18\x02 \x01(\v2/.io.clbs.octopusmq.protobuf.StorageSetupRequestH\x00R\x05setup\x12=\n" +
@@ -3389,15 +3655,21 @@ const file_api_protobuf_messages_proto_rawDesc = "" +
 	"release_id\x18\b \x01(\v23.io.clbs.octopusmq.protobuf.StorageReleaseIdRequestH\x00R\treleaseId\x12N\n" +
 	"\bget_keys\x18\t \x01(\v21.io.clbs.octopusmq.protobuf.StorageGetKeysRequestH\x00R\agetKeys\x12[\n" +
 	"\rget_keys_next\x18\n" +
-	" \x01(\v25.io.clbs.octopusmq.protobuf.StorageGetKeysNextRequestH\x00R\vgetKeysNextB\t\n" +
-	"\acommand\"\xc4\x02\n" +
+	" \x01(\v25.io.clbs.octopusmq.protobuf.StorageGetKeysNextRequestH\x00R\vgetKeysNext\x12N\n" +
+	"\bget_info\x18\v \x01(\v21.io.clbs.octopusmq.protobuf.StorageGetInfoRequestH\x00R\agetInfoB\t\n" +
+	"\acommand\"\xa6\x03\n" +
 	"\x0fStorageResponse\x12%\n" +
 	"\x0ecorrelation_id\x18\x01 \x01(\x04R\rcorrelationId\x12D\n" +
 	"\x06status\x18\x02 \x01(\v2*.io.clbs.octopusmq.protobuf.StatusResponseH\x00R\x06status\x12V\n" +
 	"\rdata_response\x18\x03 \x01(\v2/.io.clbs.octopusmq.protobuf.StorageDataResponseH\x00R\fdataResponse\x12`\n" +
-	"\x11get_keys_response\x18\x04 \x01(\v22.io.clbs.octopusmq.protobuf.StorageGetKeysResponseH\x00R\x0fgetKeysResponseB\n" +
+	"\x11get_keys_response\x18\x04 \x01(\v22.io.clbs.octopusmq.protobuf.StorageGetKeysResponseH\x00R\x0fgetKeysResponse\x12`\n" +
+	"\x11get_info_response\x18\x05 \x01(\v22.io.clbs.octopusmq.protobuf.StorageGetInfoResponseH\x00R\x0fgetInfoResponseB\n" +
 	"\n" +
-	"\bresponse\"8\n" +
+	"\bresponse\"\x17\n" +
+	"\x15StorageGetInfoRequest\"F\n" +
+	"\x16StorageGetInfoResponse\x12\x14\n" +
+	"\x05count\x18\x01 \x01(\rR\x05count\x12\x16\n" +
+	"\x06active\x18\x02 \x01(\rR\x06active\"8\n" +
 	"\x13StorageSetupRequest\x12!\n" +
 	"\fstorage_name\x18\x01 \x01(\tR\vstorageName\"\xa3\x01\n" +
 	"\x11StorageSetRequest\x12\x10\n" +
@@ -3456,7 +3728,7 @@ func file_api_protobuf_messages_proto_rawDescGZIP() []byte {
 }
 
 var file_api_protobuf_messages_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_api_protobuf_messages_proto_msgTypes = make([]protoimpl.MessageInfo, 51)
+var file_api_protobuf_messages_proto_msgTypes = make([]protoimpl.MessageInfo, 55)
 var file_api_protobuf_messages_proto_goTypes = []any{
 	(StatusCode)(0),                     // 0: io.clbs.octopusmq.protobuf.StatusCode
 	(*Item)(nil),                        // 1: io.clbs.octopusmq.protobuf.Item
@@ -3466,110 +3738,118 @@ var file_api_protobuf_messages_proto_goTypes = []any{
 	(*SetupRequest)(nil),                // 5: io.clbs.octopusmq.protobuf.SetupRequest
 	(*NoopRequest)(nil),                 // 6: io.clbs.octopusmq.protobuf.NoopRequest
 	(*StatusResponse)(nil),              // 7: io.clbs.octopusmq.protobuf.StatusResponse
-	(*EnqueueRequest)(nil),              // 8: io.clbs.octopusmq.protobuf.EnqueueRequest
-	(*BatchEnqueueRequest)(nil),         // 9: io.clbs.octopusmq.protobuf.BatchEnqueueRequest
-	(*EnqueueResponse)(nil),             // 10: io.clbs.octopusmq.protobuf.EnqueueResponse
-	(*BatchEnqueueResponse)(nil),        // 11: io.clbs.octopusmq.protobuf.BatchEnqueueResponse
-	(*PullSingleRequest)(nil),           // 12: io.clbs.octopusmq.protobuf.PullSingleRequest
-	(*PullSingleResponse)(nil),          // 13: io.clbs.octopusmq.protobuf.PullSingleResponse
-	(*PullRequest)(nil),                 // 14: io.clbs.octopusmq.protobuf.PullRequest
-	(*PullResponse)(nil),                // 15: io.clbs.octopusmq.protobuf.PullResponse
-	(*CommitSingleRequest)(nil),         // 16: io.clbs.octopusmq.protobuf.CommitSingleRequest
-	(*CommitSingleResponse)(nil),        // 17: io.clbs.octopusmq.protobuf.CommitSingleResponse
-	(*CommitRequest)(nil),               // 18: io.clbs.octopusmq.protobuf.CommitRequest
-	(*CommitResponse)(nil),              // 19: io.clbs.octopusmq.protobuf.CommitResponse
-	(*RequeueSingleRequest)(nil),        // 20: io.clbs.octopusmq.protobuf.RequeueSingleRequest
-	(*RequeueSingleResponse)(nil),       // 21: io.clbs.octopusmq.protobuf.RequeueSingleResponse
-	(*RequeueRequest)(nil),              // 22: io.clbs.octopusmq.protobuf.RequeueRequest
-	(*RequeueItem)(nil),                 // 23: io.clbs.octopusmq.protobuf.RequeueItem
-	(*RequeueResponse)(nil),             // 24: io.clbs.octopusmq.protobuf.RequeueResponse
-	(*DeleteSingleRequest)(nil),         // 25: io.clbs.octopusmq.protobuf.DeleteSingleRequest
-	(*DeleteSingleResponse)(nil),        // 26: io.clbs.octopusmq.protobuf.DeleteSingleResponse
-	(*DeleteRequest)(nil),               // 27: io.clbs.octopusmq.protobuf.DeleteRequest
-	(*DeleteResponse)(nil),              // 28: io.clbs.octopusmq.protobuf.DeleteResponse
-	(*CreateQueueRequest)(nil),          // 29: io.clbs.octopusmq.protobuf.CreateQueueRequest
-	(*ResizeQueueRequest)(nil),          // 30: io.clbs.octopusmq.protobuf.ResizeQueueRequest
-	(*DeleteQueueRequest)(nil),          // 31: io.clbs.octopusmq.protobuf.DeleteQueueRequest
-	(*ListQueuesResponse)(nil),          // 32: io.clbs.octopusmq.protobuf.ListQueuesResponse
-	(*ListQueueItem)(nil),               // 33: io.clbs.octopusmq.protobuf.ListQueueItem
-	(*PauseQueueRequest)(nil),           // 34: io.clbs.octopusmq.protobuf.PauseQueueRequest
-	(*ResumeQueueRequest)(nil),          // 35: io.clbs.octopusmq.protobuf.ResumeQueueRequest
-	(*CreateStorageRequest)(nil),        // 36: io.clbs.octopusmq.protobuf.CreateStorageRequest
-	(*DeleteStorageRequest)(nil),        // 37: io.clbs.octopusmq.protobuf.DeleteStorageRequest
-	(*ListStoragesResponse)(nil),        // 38: io.clbs.octopusmq.protobuf.ListStoragesResponse
-	(*ListStorageItem)(nil),             // 39: io.clbs.octopusmq.protobuf.ListStorageItem
-	(*StorageRequest)(nil),              // 40: io.clbs.octopusmq.protobuf.StorageRequest
-	(*StorageResponse)(nil),             // 41: io.clbs.octopusmq.protobuf.StorageResponse
-	(*StorageSetupRequest)(nil),         // 42: io.clbs.octopusmq.protobuf.StorageSetupRequest
-	(*StorageSetRequest)(nil),           // 43: io.clbs.octopusmq.protobuf.StorageSetRequest
-	(*StorageGetRequest)(nil),           // 44: io.clbs.octopusmq.protobuf.StorageGetRequest
-	(*StorageDeleteRequest)(nil),        // 45: io.clbs.octopusmq.protobuf.StorageDeleteRequest
-	(*StorageLockAnyWithIdRequest)(nil), // 46: io.clbs.octopusmq.protobuf.StorageLockAnyWithIdRequest
-	(*StorageReleaseIdRequest)(nil),     // 47: io.clbs.octopusmq.protobuf.StorageReleaseIdRequest
-	(*StorageGetKeysRequest)(nil),       // 48: io.clbs.octopusmq.protobuf.StorageGetKeysRequest
-	(*StorageGetKeysNextRequest)(nil),   // 49: io.clbs.octopusmq.protobuf.StorageGetKeysNextRequest
-	(*StorageDataResponse)(nil),         // 50: io.clbs.octopusmq.protobuf.StorageDataResponse
-	(*StorageGetKeysResponse)(nil),      // 51: io.clbs.octopusmq.protobuf.StorageGetKeysResponse
-	(*durationpb.Duration)(nil),         // 52: google.protobuf.Duration
+	(*GetQueueInfoRequest)(nil),         // 8: io.clbs.octopusmq.protobuf.GetQueueInfoRequest
+	(*GetQueueInfoResponse)(nil),        // 9: io.clbs.octopusmq.protobuf.GetQueueInfoResponse
+	(*EnqueueRequest)(nil),              // 10: io.clbs.octopusmq.protobuf.EnqueueRequest
+	(*BatchEnqueueRequest)(nil),         // 11: io.clbs.octopusmq.protobuf.BatchEnqueueRequest
+	(*EnqueueResponse)(nil),             // 12: io.clbs.octopusmq.protobuf.EnqueueResponse
+	(*BatchEnqueueResponse)(nil),        // 13: io.clbs.octopusmq.protobuf.BatchEnqueueResponse
+	(*PullSingleRequest)(nil),           // 14: io.clbs.octopusmq.protobuf.PullSingleRequest
+	(*PullSingleResponse)(nil),          // 15: io.clbs.octopusmq.protobuf.PullSingleResponse
+	(*PullRequest)(nil),                 // 16: io.clbs.octopusmq.protobuf.PullRequest
+	(*PullResponse)(nil),                // 17: io.clbs.octopusmq.protobuf.PullResponse
+	(*CommitSingleRequest)(nil),         // 18: io.clbs.octopusmq.protobuf.CommitSingleRequest
+	(*CommitSingleResponse)(nil),        // 19: io.clbs.octopusmq.protobuf.CommitSingleResponse
+	(*CommitRequest)(nil),               // 20: io.clbs.octopusmq.protobuf.CommitRequest
+	(*CommitResponse)(nil),              // 21: io.clbs.octopusmq.protobuf.CommitResponse
+	(*RequeueSingleRequest)(nil),        // 22: io.clbs.octopusmq.protobuf.RequeueSingleRequest
+	(*RequeueSingleResponse)(nil),       // 23: io.clbs.octopusmq.protobuf.RequeueSingleResponse
+	(*RequeueRequest)(nil),              // 24: io.clbs.octopusmq.protobuf.RequeueRequest
+	(*RequeueItem)(nil),                 // 25: io.clbs.octopusmq.protobuf.RequeueItem
+	(*RequeueResponse)(nil),             // 26: io.clbs.octopusmq.protobuf.RequeueResponse
+	(*DeleteSingleRequest)(nil),         // 27: io.clbs.octopusmq.protobuf.DeleteSingleRequest
+	(*DeleteSingleResponse)(nil),        // 28: io.clbs.octopusmq.protobuf.DeleteSingleResponse
+	(*DeleteRequest)(nil),               // 29: io.clbs.octopusmq.protobuf.DeleteRequest
+	(*DeleteResponse)(nil),              // 30: io.clbs.octopusmq.protobuf.DeleteResponse
+	(*CreateQueueRequest)(nil),          // 31: io.clbs.octopusmq.protobuf.CreateQueueRequest
+	(*ResizeQueueRequest)(nil),          // 32: io.clbs.octopusmq.protobuf.ResizeQueueRequest
+	(*DeleteQueueRequest)(nil),          // 33: io.clbs.octopusmq.protobuf.DeleteQueueRequest
+	(*ListQueuesResponse)(nil),          // 34: io.clbs.octopusmq.protobuf.ListQueuesResponse
+	(*ListQueueItem)(nil),               // 35: io.clbs.octopusmq.protobuf.ListQueueItem
+	(*PauseQueueRequest)(nil),           // 36: io.clbs.octopusmq.protobuf.PauseQueueRequest
+	(*ResumeQueueRequest)(nil),          // 37: io.clbs.octopusmq.protobuf.ResumeQueueRequest
+	(*CreateStorageRequest)(nil),        // 38: io.clbs.octopusmq.protobuf.CreateStorageRequest
+	(*DeleteStorageRequest)(nil),        // 39: io.clbs.octopusmq.protobuf.DeleteStorageRequest
+	(*ListStoragesResponse)(nil),        // 40: io.clbs.octopusmq.protobuf.ListStoragesResponse
+	(*ListStorageItem)(nil),             // 41: io.clbs.octopusmq.protobuf.ListStorageItem
+	(*StorageRequest)(nil),              // 42: io.clbs.octopusmq.protobuf.StorageRequest
+	(*StorageResponse)(nil),             // 43: io.clbs.octopusmq.protobuf.StorageResponse
+	(*StorageGetInfoRequest)(nil),       // 44: io.clbs.octopusmq.protobuf.StorageGetInfoRequest
+	(*StorageGetInfoResponse)(nil),      // 45: io.clbs.octopusmq.protobuf.StorageGetInfoResponse
+	(*StorageSetupRequest)(nil),         // 46: io.clbs.octopusmq.protobuf.StorageSetupRequest
+	(*StorageSetRequest)(nil),           // 47: io.clbs.octopusmq.protobuf.StorageSetRequest
+	(*StorageGetRequest)(nil),           // 48: io.clbs.octopusmq.protobuf.StorageGetRequest
+	(*StorageDeleteRequest)(nil),        // 49: io.clbs.octopusmq.protobuf.StorageDeleteRequest
+	(*StorageLockAnyWithIdRequest)(nil), // 50: io.clbs.octopusmq.protobuf.StorageLockAnyWithIdRequest
+	(*StorageReleaseIdRequest)(nil),     // 51: io.clbs.octopusmq.protobuf.StorageReleaseIdRequest
+	(*StorageGetKeysRequest)(nil),       // 52: io.clbs.octopusmq.protobuf.StorageGetKeysRequest
+	(*StorageGetKeysNextRequest)(nil),   // 53: io.clbs.octopusmq.protobuf.StorageGetKeysNextRequest
+	(*StorageDataResponse)(nil),         // 54: io.clbs.octopusmq.protobuf.StorageDataResponse
+	(*StorageGetKeysResponse)(nil),      // 55: io.clbs.octopusmq.protobuf.StorageGetKeysResponse
+	(*durationpb.Duration)(nil),         // 56: google.protobuf.Duration
 }
 var file_api_protobuf_messages_proto_depIdxs = []int32{
-	52, // 0: io.clbs.octopusmq.protobuf.InputItem.ttl:type_name -> google.protobuf.Duration
+	56, // 0: io.clbs.octopusmq.protobuf.InputItem.ttl:type_name -> google.protobuf.Duration
 	5,  // 1: io.clbs.octopusmq.protobuf.QueueRequest.setup:type_name -> io.clbs.octopusmq.protobuf.SetupRequest
 	6,  // 2: io.clbs.octopusmq.protobuf.QueueRequest.noop:type_name -> io.clbs.octopusmq.protobuf.NoopRequest
-	8,  // 3: io.clbs.octopusmq.protobuf.QueueRequest.enqueue:type_name -> io.clbs.octopusmq.protobuf.EnqueueRequest
-	12, // 4: io.clbs.octopusmq.protobuf.QueueRequest.pull_single:type_name -> io.clbs.octopusmq.protobuf.PullSingleRequest
-	14, // 5: io.clbs.octopusmq.protobuf.QueueRequest.pull:type_name -> io.clbs.octopusmq.protobuf.PullRequest
-	16, // 6: io.clbs.octopusmq.protobuf.QueueRequest.commit_single:type_name -> io.clbs.octopusmq.protobuf.CommitSingleRequest
-	18, // 7: io.clbs.octopusmq.protobuf.QueueRequest.commit:type_name -> io.clbs.octopusmq.protobuf.CommitRequest
-	20, // 8: io.clbs.octopusmq.protobuf.QueueRequest.requeue_single:type_name -> io.clbs.octopusmq.protobuf.RequeueSingleRequest
-	22, // 9: io.clbs.octopusmq.protobuf.QueueRequest.requeue:type_name -> io.clbs.octopusmq.protobuf.RequeueRequest
-	25, // 10: io.clbs.octopusmq.protobuf.QueueRequest.delete_single:type_name -> io.clbs.octopusmq.protobuf.DeleteSingleRequest
-	27, // 11: io.clbs.octopusmq.protobuf.QueueRequest.delete:type_name -> io.clbs.octopusmq.protobuf.DeleteRequest
-	9,  // 12: io.clbs.octopusmq.protobuf.QueueRequest.batch_enqueue:type_name -> io.clbs.octopusmq.protobuf.BatchEnqueueRequest
-	7,  // 13: io.clbs.octopusmq.protobuf.QueueResponse.status:type_name -> io.clbs.octopusmq.protobuf.StatusResponse
-	10, // 14: io.clbs.octopusmq.protobuf.QueueResponse.enqueue:type_name -> io.clbs.octopusmq.protobuf.EnqueueResponse
-	13, // 15: io.clbs.octopusmq.protobuf.QueueResponse.pull_single:type_name -> io.clbs.octopusmq.protobuf.PullSingleResponse
-	15, // 16: io.clbs.octopusmq.protobuf.QueueResponse.pull:type_name -> io.clbs.octopusmq.protobuf.PullResponse
-	17, // 17: io.clbs.octopusmq.protobuf.QueueResponse.commit_single:type_name -> io.clbs.octopusmq.protobuf.CommitSingleResponse
-	19, // 18: io.clbs.octopusmq.protobuf.QueueResponse.commit:type_name -> io.clbs.octopusmq.protobuf.CommitResponse
-	21, // 19: io.clbs.octopusmq.protobuf.QueueResponse.requeue_single:type_name -> io.clbs.octopusmq.protobuf.RequeueSingleResponse
-	24, // 20: io.clbs.octopusmq.protobuf.QueueResponse.requeue:type_name -> io.clbs.octopusmq.protobuf.RequeueResponse
-	26, // 21: io.clbs.octopusmq.protobuf.QueueResponse.delete_single:type_name -> io.clbs.octopusmq.protobuf.DeleteSingleResponse
-	28, // 22: io.clbs.octopusmq.protobuf.QueueResponse.delete:type_name -> io.clbs.octopusmq.protobuf.DeleteResponse
-	11, // 23: io.clbs.octopusmq.protobuf.QueueResponse.batch_enqueue:type_name -> io.clbs.octopusmq.protobuf.BatchEnqueueResponse
-	0,  // 24: io.clbs.octopusmq.protobuf.StatusResponse.code:type_name -> io.clbs.octopusmq.protobuf.StatusCode
-	2,  // 25: io.clbs.octopusmq.protobuf.EnqueueRequest.item:type_name -> io.clbs.octopusmq.protobuf.InputItem
-	52, // 26: io.clbs.octopusmq.protobuf.EnqueueRequest.timeout:type_name -> google.protobuf.Duration
-	2,  // 27: io.clbs.octopusmq.protobuf.BatchEnqueueRequest.items:type_name -> io.clbs.octopusmq.protobuf.InputItem
-	52, // 28: io.clbs.octopusmq.protobuf.BatchEnqueueRequest.timeout:type_name -> google.protobuf.Duration
-	52, // 29: io.clbs.octopusmq.protobuf.PullSingleRequest.timeout:type_name -> google.protobuf.Duration
-	1,  // 30: io.clbs.octopusmq.protobuf.PullSingleResponse.item:type_name -> io.clbs.octopusmq.protobuf.Item
-	52, // 31: io.clbs.octopusmq.protobuf.PullRequest.timeout:type_name -> google.protobuf.Duration
-	1,  // 32: io.clbs.octopusmq.protobuf.PullResponse.items:type_name -> io.clbs.octopusmq.protobuf.Item
-	23, // 33: io.clbs.octopusmq.protobuf.RequeueSingleRequest.item:type_name -> io.clbs.octopusmq.protobuf.RequeueItem
-	23, // 34: io.clbs.octopusmq.protobuf.RequeueRequest.items:type_name -> io.clbs.octopusmq.protobuf.RequeueItem
-	52, // 35: io.clbs.octopusmq.protobuf.RequeueItem.ttl:type_name -> google.protobuf.Duration
-	33, // 36: io.clbs.octopusmq.protobuf.ListQueuesResponse.queues:type_name -> io.clbs.octopusmq.protobuf.ListQueueItem
-	39, // 37: io.clbs.octopusmq.protobuf.ListStoragesResponse.storages:type_name -> io.clbs.octopusmq.protobuf.ListStorageItem
-	42, // 38: io.clbs.octopusmq.protobuf.StorageRequest.setup:type_name -> io.clbs.octopusmq.protobuf.StorageSetupRequest
-	6,  // 39: io.clbs.octopusmq.protobuf.StorageRequest.noop:type_name -> io.clbs.octopusmq.protobuf.NoopRequest
-	43, // 40: io.clbs.octopusmq.protobuf.StorageRequest.set:type_name -> io.clbs.octopusmq.protobuf.StorageSetRequest
-	44, // 41: io.clbs.octopusmq.protobuf.StorageRequest.get:type_name -> io.clbs.octopusmq.protobuf.StorageGetRequest
-	45, // 42: io.clbs.octopusmq.protobuf.StorageRequest.delete:type_name -> io.clbs.octopusmq.protobuf.StorageDeleteRequest
-	46, // 43: io.clbs.octopusmq.protobuf.StorageRequest.lock_any_with_id:type_name -> io.clbs.octopusmq.protobuf.StorageLockAnyWithIdRequest
-	47, // 44: io.clbs.octopusmq.protobuf.StorageRequest.release_id:type_name -> io.clbs.octopusmq.protobuf.StorageReleaseIdRequest
-	48, // 45: io.clbs.octopusmq.protobuf.StorageRequest.get_keys:type_name -> io.clbs.octopusmq.protobuf.StorageGetKeysRequest
-	49, // 46: io.clbs.octopusmq.protobuf.StorageRequest.get_keys_next:type_name -> io.clbs.octopusmq.protobuf.StorageGetKeysNextRequest
-	7,  // 47: io.clbs.octopusmq.protobuf.StorageResponse.status:type_name -> io.clbs.octopusmq.protobuf.StatusResponse
-	50, // 48: io.clbs.octopusmq.protobuf.StorageResponse.data_response:type_name -> io.clbs.octopusmq.protobuf.StorageDataResponse
-	51, // 49: io.clbs.octopusmq.protobuf.StorageResponse.get_keys_response:type_name -> io.clbs.octopusmq.protobuf.StorageGetKeysResponse
-	52, // 50: io.clbs.octopusmq.protobuf.StorageSetRequest.ttl:type_name -> google.protobuf.Duration
-	52, // 51: io.clbs.octopusmq.protobuf.StorageLockAnyWithIdRequest.timeout:type_name -> google.protobuf.Duration
-	52, // [52:52] is the sub-list for method output_type
-	52, // [52:52] is the sub-list for method input_type
-	52, // [52:52] is the sub-list for extension type_name
-	52, // [52:52] is the sub-list for extension extendee
-	0,  // [0:52] is the sub-list for field type_name
+	10, // 3: io.clbs.octopusmq.protobuf.QueueRequest.enqueue:type_name -> io.clbs.octopusmq.protobuf.EnqueueRequest
+	14, // 4: io.clbs.octopusmq.protobuf.QueueRequest.pull_single:type_name -> io.clbs.octopusmq.protobuf.PullSingleRequest
+	16, // 5: io.clbs.octopusmq.protobuf.QueueRequest.pull:type_name -> io.clbs.octopusmq.protobuf.PullRequest
+	18, // 6: io.clbs.octopusmq.protobuf.QueueRequest.commit_single:type_name -> io.clbs.octopusmq.protobuf.CommitSingleRequest
+	20, // 7: io.clbs.octopusmq.protobuf.QueueRequest.commit:type_name -> io.clbs.octopusmq.protobuf.CommitRequest
+	22, // 8: io.clbs.octopusmq.protobuf.QueueRequest.requeue_single:type_name -> io.clbs.octopusmq.protobuf.RequeueSingleRequest
+	24, // 9: io.clbs.octopusmq.protobuf.QueueRequest.requeue:type_name -> io.clbs.octopusmq.protobuf.RequeueRequest
+	27, // 10: io.clbs.octopusmq.protobuf.QueueRequest.delete_single:type_name -> io.clbs.octopusmq.protobuf.DeleteSingleRequest
+	29, // 11: io.clbs.octopusmq.protobuf.QueueRequest.delete:type_name -> io.clbs.octopusmq.protobuf.DeleteRequest
+	11, // 12: io.clbs.octopusmq.protobuf.QueueRequest.batch_enqueue:type_name -> io.clbs.octopusmq.protobuf.BatchEnqueueRequest
+	8,  // 13: io.clbs.octopusmq.protobuf.QueueRequest.get_queue_info:type_name -> io.clbs.octopusmq.protobuf.GetQueueInfoRequest
+	7,  // 14: io.clbs.octopusmq.protobuf.QueueResponse.status:type_name -> io.clbs.octopusmq.protobuf.StatusResponse
+	12, // 15: io.clbs.octopusmq.protobuf.QueueResponse.enqueue:type_name -> io.clbs.octopusmq.protobuf.EnqueueResponse
+	15, // 16: io.clbs.octopusmq.protobuf.QueueResponse.pull_single:type_name -> io.clbs.octopusmq.protobuf.PullSingleResponse
+	17, // 17: io.clbs.octopusmq.protobuf.QueueResponse.pull:type_name -> io.clbs.octopusmq.protobuf.PullResponse
+	19, // 18: io.clbs.octopusmq.protobuf.QueueResponse.commit_single:type_name -> io.clbs.octopusmq.protobuf.CommitSingleResponse
+	21, // 19: io.clbs.octopusmq.protobuf.QueueResponse.commit:type_name -> io.clbs.octopusmq.protobuf.CommitResponse
+	23, // 20: io.clbs.octopusmq.protobuf.QueueResponse.requeue_single:type_name -> io.clbs.octopusmq.protobuf.RequeueSingleResponse
+	26, // 21: io.clbs.octopusmq.protobuf.QueueResponse.requeue:type_name -> io.clbs.octopusmq.protobuf.RequeueResponse
+	28, // 22: io.clbs.octopusmq.protobuf.QueueResponse.delete_single:type_name -> io.clbs.octopusmq.protobuf.DeleteSingleResponse
+	30, // 23: io.clbs.octopusmq.protobuf.QueueResponse.delete:type_name -> io.clbs.octopusmq.protobuf.DeleteResponse
+	13, // 24: io.clbs.octopusmq.protobuf.QueueResponse.batch_enqueue:type_name -> io.clbs.octopusmq.protobuf.BatchEnqueueResponse
+	9,  // 25: io.clbs.octopusmq.protobuf.QueueResponse.get_queue_info:type_name -> io.clbs.octopusmq.protobuf.GetQueueInfoResponse
+	0,  // 26: io.clbs.octopusmq.protobuf.StatusResponse.code:type_name -> io.clbs.octopusmq.protobuf.StatusCode
+	2,  // 27: io.clbs.octopusmq.protobuf.EnqueueRequest.item:type_name -> io.clbs.octopusmq.protobuf.InputItem
+	56, // 28: io.clbs.octopusmq.protobuf.EnqueueRequest.timeout:type_name -> google.protobuf.Duration
+	2,  // 29: io.clbs.octopusmq.protobuf.BatchEnqueueRequest.items:type_name -> io.clbs.octopusmq.protobuf.InputItem
+	56, // 30: io.clbs.octopusmq.protobuf.BatchEnqueueRequest.timeout:type_name -> google.protobuf.Duration
+	56, // 31: io.clbs.octopusmq.protobuf.PullSingleRequest.timeout:type_name -> google.protobuf.Duration
+	1,  // 32: io.clbs.octopusmq.protobuf.PullSingleResponse.item:type_name -> io.clbs.octopusmq.protobuf.Item
+	56, // 33: io.clbs.octopusmq.protobuf.PullRequest.timeout:type_name -> google.protobuf.Duration
+	1,  // 34: io.clbs.octopusmq.protobuf.PullResponse.items:type_name -> io.clbs.octopusmq.protobuf.Item
+	25, // 35: io.clbs.octopusmq.protobuf.RequeueSingleRequest.item:type_name -> io.clbs.octopusmq.protobuf.RequeueItem
+	25, // 36: io.clbs.octopusmq.protobuf.RequeueRequest.items:type_name -> io.clbs.octopusmq.protobuf.RequeueItem
+	56, // 37: io.clbs.octopusmq.protobuf.RequeueItem.ttl:type_name -> google.protobuf.Duration
+	35, // 38: io.clbs.octopusmq.protobuf.ListQueuesResponse.queues:type_name -> io.clbs.octopusmq.protobuf.ListQueueItem
+	41, // 39: io.clbs.octopusmq.protobuf.ListStoragesResponse.storages:type_name -> io.clbs.octopusmq.protobuf.ListStorageItem
+	46, // 40: io.clbs.octopusmq.protobuf.StorageRequest.setup:type_name -> io.clbs.octopusmq.protobuf.StorageSetupRequest
+	6,  // 41: io.clbs.octopusmq.protobuf.StorageRequest.noop:type_name -> io.clbs.octopusmq.protobuf.NoopRequest
+	47, // 42: io.clbs.octopusmq.protobuf.StorageRequest.set:type_name -> io.clbs.octopusmq.protobuf.StorageSetRequest
+	48, // 43: io.clbs.octopusmq.protobuf.StorageRequest.get:type_name -> io.clbs.octopusmq.protobuf.StorageGetRequest
+	49, // 44: io.clbs.octopusmq.protobuf.StorageRequest.delete:type_name -> io.clbs.octopusmq.protobuf.StorageDeleteRequest
+	50, // 45: io.clbs.octopusmq.protobuf.StorageRequest.lock_any_with_id:type_name -> io.clbs.octopusmq.protobuf.StorageLockAnyWithIdRequest
+	51, // 46: io.clbs.octopusmq.protobuf.StorageRequest.release_id:type_name -> io.clbs.octopusmq.protobuf.StorageReleaseIdRequest
+	52, // 47: io.clbs.octopusmq.protobuf.StorageRequest.get_keys:type_name -> io.clbs.octopusmq.protobuf.StorageGetKeysRequest
+	53, // 48: io.clbs.octopusmq.protobuf.StorageRequest.get_keys_next:type_name -> io.clbs.octopusmq.protobuf.StorageGetKeysNextRequest
+	44, // 49: io.clbs.octopusmq.protobuf.StorageRequest.get_info:type_name -> io.clbs.octopusmq.protobuf.StorageGetInfoRequest
+	7,  // 50: io.clbs.octopusmq.protobuf.StorageResponse.status:type_name -> io.clbs.octopusmq.protobuf.StatusResponse
+	54, // 51: io.clbs.octopusmq.protobuf.StorageResponse.data_response:type_name -> io.clbs.octopusmq.protobuf.StorageDataResponse
+	55, // 52: io.clbs.octopusmq.protobuf.StorageResponse.get_keys_response:type_name -> io.clbs.octopusmq.protobuf.StorageGetKeysResponse
+	45, // 53: io.clbs.octopusmq.protobuf.StorageResponse.get_info_response:type_name -> io.clbs.octopusmq.protobuf.StorageGetInfoResponse
+	56, // 54: io.clbs.octopusmq.protobuf.StorageSetRequest.ttl:type_name -> google.protobuf.Duration
+	56, // 55: io.clbs.octopusmq.protobuf.StorageLockAnyWithIdRequest.timeout:type_name -> google.protobuf.Duration
+	56, // [56:56] is the sub-list for method output_type
+	56, // [56:56] is the sub-list for method input_type
+	56, // [56:56] is the sub-list for extension type_name
+	56, // [56:56] is the sub-list for extension extendee
+	0,  // [0:56] is the sub-list for field type_name
 }
 
 func init() { file_api_protobuf_messages_proto_init() }
@@ -3591,6 +3871,7 @@ func file_api_protobuf_messages_proto_init() {
 		(*QueueRequest_DeleteSingle)(nil),
 		(*QueueRequest_Delete)(nil),
 		(*QueueRequest_BatchEnqueue)(nil),
+		(*QueueRequest_GetQueueInfo)(nil),
 	}
 	file_api_protobuf_messages_proto_msgTypes[3].OneofWrappers = []any{
 		(*QueueResponse_Status)(nil),
@@ -3604,8 +3885,9 @@ func file_api_protobuf_messages_proto_init() {
 		(*QueueResponse_DeleteSingle)(nil),
 		(*QueueResponse_Delete)(nil),
 		(*QueueResponse_BatchEnqueue)(nil),
+		(*QueueResponse_GetQueueInfo)(nil),
 	}
-	file_api_protobuf_messages_proto_msgTypes[39].OneofWrappers = []any{
+	file_api_protobuf_messages_proto_msgTypes[41].OneofWrappers = []any{
 		(*StorageRequest_Setup)(nil),
 		(*StorageRequest_Noop)(nil),
 		(*StorageRequest_Set)(nil),
@@ -3615,20 +3897,22 @@ func file_api_protobuf_messages_proto_init() {
 		(*StorageRequest_ReleaseId)(nil),
 		(*StorageRequest_GetKeys)(nil),
 		(*StorageRequest_GetKeysNext)(nil),
+		(*StorageRequest_GetInfo)(nil),
 	}
-	file_api_protobuf_messages_proto_msgTypes[40].OneofWrappers = []any{
+	file_api_protobuf_messages_proto_msgTypes[42].OneofWrappers = []any{
 		(*StorageResponse_Status)(nil),
 		(*StorageResponse_DataResponse)(nil),
 		(*StorageResponse_GetKeysResponse)(nil),
+		(*StorageResponse_GetInfoResponse)(nil),
 	}
-	file_api_protobuf_messages_proto_msgTypes[42].OneofWrappers = []any{}
+	file_api_protobuf_messages_proto_msgTypes[46].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_api_protobuf_messages_proto_rawDesc), len(file_api_protobuf_messages_proto_rawDesc)),
 			NumEnums:      1,
-			NumMessages:   51,
+			NumMessages:   55,
 			NumExtensions: 0,
 			NumServices:   0,
 		},
