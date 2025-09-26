@@ -406,3 +406,22 @@ func (c *QueueClient) Noop() error {
 		return fmt.Errorf("unexpected response type: %T", cc)
 	}
 }
+
+func (c *QueueClient) GetInfo() (*pb.GetQueueInfoResponse, error) {
+	reqp, err := c.handleresp(&pb.QueueRequest{
+		Command: &pb.QueueRequest_GetQueueInfo{
+			GetQueueInfo: &pb.GetQueueInfoRequest{},
+		},
+	})
+	if err != nil {
+		return nil, err
+	}
+	switch cc := reqp.Response.(type) {
+	case *pb.QueueResponse_Status:
+		return nil, decodestatus(cc)
+	case *pb.QueueResponse_GetQueueInfo:
+		return cc.GetQueueInfo, nil
+	default:
+		return nil, fmt.Errorf("unexpected response type: %T", cc)
+	}
+}
