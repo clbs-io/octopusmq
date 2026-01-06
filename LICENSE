@@ -1,0 +1,66 @@
+Proprietary License
+
+Copyright (c) 2024 dDash s.r.o. All rights reserved.
+
+This software and associated documentation files (the "Software") are proprietary
+and confidential to dDash s.r.o.
+
+TERMS AND CONDITIONS:
+
+1. OWNERSHIP
+   All intellectual property rights in the Software, including but not limited to
+   copyrights, patents, trademarks, and trade secrets, are and shall remain the
+   exclusive property of dDash s.r.o.
+
+2. LICENSE GRANT
+   Subject to the terms and conditions of this license, dDash s.r.o. grants you
+   a limited, non-exclusive, non-transferable license to use the public API
+   definitions and client libraries provided in this repository solely for the
+   purpose of integrating with and accessing OctopusMQ services.
+
+3. RESTRICTIONS
+   You may not:
+   a) Modify, adapt, translate, or create derivative works based on the Software
+   b) Reverse engineer, decompile, disassemble, or otherwise attempt to discover
+      the source code or underlying algorithms of the Software
+   c) Rent, lease, loan, sublicense, distribute, or transfer the Software to any
+      third party
+   d) Remove, alter, or obscure any proprietary notices on the Software
+   e) Use the Software for any purpose other than as expressly permitted herein
+
+4. CONFIDENTIALITY
+   The Software contains trade secrets and proprietary information of dDash s.r.o.
+   You agree to maintain the confidentiality of the Software and not to disclose
+   it to any third party without prior written consent from dDash s.r.o.
+
+5. NO WARRANTY
+   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+   IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+   FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL
+   DDASH S.R.O. BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+   IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+   CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+6. TERMINATION
+   This license is effective until terminated. Your rights under this license
+   will terminate automatically without notice if you fail to comply with any
+   term of this license. Upon termination, you must immediately cease all use
+   of the Software and destroy all copies in your possession.
+
+7. GOVERNING LAW
+   This license shall be governed by and construed in accordance with the laws
+   of the Czech Republic, without regard to its conflict of law provisions.
+
+For licensing inquiries, please contact:
+
+dDash s.r.o.
+Strakonicka 3367
+Smichov
+150 00 Praha
+Czech Republic
+
+ID: 06305741
+TIN: CZ06305741
+
+Email: info@cybroslabs.com
+Website: https://www.cybroslabs.com
