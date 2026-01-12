@@ -1,8 +1,9 @@
 syntax = "proto3";
 package io.clbs.octopusmq.grpc;
-option go_package = "github.com/clbs-io/octopusmq/pkg/grpcpb";
 
 import "messages.proto";
+
+option go_package = "github.com/clbs-io/octopusmq/pkg/grpcpb";
 
 // The service represents main operations on the queues.
 service QueuesService {

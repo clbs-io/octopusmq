@@ -23,6 +23,7 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
+// RaftCommand represents a command that will be replicated through the Raft consensus protocol.
 type RaftCommand struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Types that are valid to be assigned to Command:
@@ -174,47 +175,47 @@ type isRaftCommand_Command interface {
 }
 
 type RaftCommand_CreateQueue struct {
-	CreateQueue *RaftCreateQueue `protobuf:"bytes,1,opt,name=create_queue,json=createQueue,proto3,oneof"`
+	CreateQueue *RaftCreateQueue `protobuf:"bytes,1,opt,name=create_queue,json=createQueue,proto3,oneof"` // Create a new queue.
 }
 
 type RaftCommand_DeleteQueue struct {
-	DeleteQueue *protobuf.DeleteQueueRequest `protobuf:"bytes,2,opt,name=delete_queue,json=deleteQueue,proto3,oneof"`
+	DeleteQueue *protobuf.DeleteQueueRequest `protobuf:"bytes,2,opt,name=delete_queue,json=deleteQueue,proto3,oneof"` // Delete an existing queue.
 }
 
 type RaftCommand_PauseResumeQueue struct {
-	PauseResumeQueue *RaftPauseResumeQueue `protobuf:"bytes,3,opt,name=pause_resume_queue,json=pauseResumeQueue,proto3,oneof"`
+	PauseResumeQueue *RaftPauseResumeQueue `protobuf:"bytes,3,opt,name=pause_resume_queue,json=pauseResumeQueue,proto3,oneof"` // Pause or resume a queue.
 }
 
 type RaftCommand_PurgeItems struct {
-	PurgeItems *RaftPurgeItems `protobuf:"bytes,4,opt,name=purge_items,json=purgeItems,proto3,oneof"`
+	PurgeItems *RaftPurgeItems `protobuf:"bytes,4,opt,name=purge_items,json=purgeItems,proto3,oneof"` // Purge items from queues.
 }
 
 type RaftCommand_StorageCommands struct {
-	// internal storage commands
-	StorageCommands *RaftStorageCommands `protobuf:"bytes,5,opt,name=storage_commands,json=storageCommands,proto3,oneof"`
+	// Internal storage commands
+	StorageCommands *RaftStorageCommands `protobuf:"bytes,5,opt,name=storage_commands,json=storageCommands,proto3,oneof"` // Batch of storage operations.
 }
 
 type RaftCommand_StorageDeleteIds struct {
-	StorageDeleteIds *RaftStorageDeleteIds `protobuf:"bytes,6,opt,name=storage_delete_ids,json=storageDeleteIds,proto3,oneof"`
+	StorageDeleteIds *RaftStorageDeleteIds `protobuf:"bytes,6,opt,name=storage_delete_ids,json=storageDeleteIds,proto3,oneof"` // Delete multiple items by ID.
 }
 
 type RaftCommand_StartNoop struct {
-	// starting hack
-	StartNoop *RaftStartNoop `protobuf:"bytes,7,opt,name=start_noop,json=startNoop,proto3,oneof"`
+	// Starting synchronization
+	StartNoop *RaftStartNoop `protobuf:"bytes,7,opt,name=start_noop,json=startNoop,proto3,oneof"` // No-op command to sync cluster start time.
 }
 
 type RaftCommand_ResizeQueue struct {
-	// next commands
-	ResizeQueue *protobuf.ResizeQueueRequest `protobuf:"bytes,8,opt,name=resize_queue,json=resizeQueue,proto3,oneof"`
+	// Queue management commands
+	ResizeQueue *protobuf.ResizeQueueRequest `protobuf:"bytes,8,opt,name=resize_queue,json=resizeQueue,proto3,oneof"` // Resize an existing queue.
 }
 
 type RaftCommand_CreateStorage struct {
-	// storage
-	CreateStorage *RaftCreateStorage `protobuf:"bytes,9,opt,name=create_storage,json=createStorage,proto3,oneof"`
+	// Storage management commands
+	CreateStorage *RaftCreateStorage `protobuf:"bytes,9,opt,name=create_storage,json=createStorage,proto3,oneof"` // Create a new storage.
 }
 
 type RaftCommand_DeleteStorage struct {
-	DeleteStorage *protobuf.DeleteStorageRequest `protobuf:"bytes,10,opt,name=delete_storage,json=deleteStorage,proto3,oneof"`
+	DeleteStorage *protobuf.DeleteStorageRequest `protobuf:"bytes,10,opt,name=delete_storage,json=deleteStorage,proto3,oneof"` // Delete an existing storage.
 }
 
 func (*RaftCommand_CreateQueue) isRaftCommand_Command() {}
@@ -237,9 +238,12 @@ func (*RaftCommand_CreateStorage) isRaftCommand_Command() {}
 
 func (*RaftCommand_DeleteStorage) isRaftCommand_Command() {}
 
+// RaftCreateQueue creates a new queue with an assigned ID.
 type RaftCreateQueue struct {
-	state         protoimpl.MessageState       `protogen:"open.v1"`
-	QueueId       uint32                       `protobuf:"varint,1,opt,name=queue_id,json=queueId,proto3" json:"queue_id,omitempty"`
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Internal queue ID assigned by the system.
+	QueueId uint32 `protobuf:"varint,1,opt,name=queue_id,json=queueId,proto3" json:"queue_id,omitempty"`
+	// Queue creation parameters.
 	Queue         *protobuf.CreateQueueRequest `protobuf:"bytes,2,opt,name=queue,proto3" json:"queue,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -289,10 +293,13 @@ func (x *RaftCreateQueue) GetQueue() *protobuf.CreateQueueRequest {
 	return nil
 }
 
+// RaftPauseResumeQueue pauses or resumes a queue.
 type RaftPauseResumeQueue struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	QueueName     string                 `protobuf:"bytes,1,opt,name=queue_name,json=queueName,proto3" json:"queue_name,omitempty"`
-	Pause         bool                   `protobuf:"varint,2,opt,name=pause,proto3" json:"pause,omitempty"`
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Name of the queue to pause or resume.
+	QueueName string `protobuf:"bytes,1,opt,name=queue_name,json=queueName,proto3" json:"queue_name,omitempty"`
+	// If true, pause the queue; if false, resume it.
+	Pause         bool `protobuf:"varint,2,opt,name=pause,proto3" json:"pause,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -341,6 +348,7 @@ func (x *RaftPauseResumeQueue) GetPause() bool {
 	return false
 }
 
+// RaftPurgeItems purges expired or completed items from queues.
 type RaftPurgeItems struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	unknownFields protoimpl.UnknownFields
@@ -377,10 +385,13 @@ func (*RaftPurgeItems) Descriptor() ([]byte, []int) {
 	return file_raftcommands_proto_rawDescGZIP(), []int{3}
 }
 
+// RaftStartNoop is used to synchronize cluster start time and ensure consistency.
 type RaftStartNoop struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	StartTime     *timestamppb.Timestamp `protobuf:"bytes,1,opt,name=start_time,json=startTime,proto3" json:"start_time,omitempty"`
-	Uuid          string                 `protobuf:"bytes,2,opt,name=uuid,proto3" json:"uuid,omitempty"`
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Timestamp when the cluster started.
+	StartTime *timestamppb.Timestamp `protobuf:"bytes,1,opt,name=start_time,json=startTime,proto3" json:"start_time,omitempty"`
+	// Unique identifier for this start operation.
+	Uuid          string `protobuf:"bytes,2,opt,name=uuid,proto3" json:"uuid,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -429,10 +440,13 @@ func (x *RaftStartNoop) GetUuid() string {
 	return ""
 }
 
+// RaftStorageCommands contains a batch of storage operations to be applied atomically.
 type RaftStorageCommands struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Id            uint32                 `protobuf:"varint,1,opt,name=id,proto3" json:"id,omitempty"`
-	Commands      []*RaftStorageCommand  `protobuf:"bytes,2,rep,name=commands,proto3" json:"commands,omitempty"`
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Internal storage ID.
+	Id uint32 `protobuf:"varint,1,opt,name=id,proto3" json:"id,omitempty"`
+	// List of storage commands to execute.
+	Commands      []*RaftStorageCommand `protobuf:"bytes,2,rep,name=commands,proto3" json:"commands,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -481,9 +495,11 @@ func (x *RaftStorageCommands) GetCommands() []*RaftStorageCommand {
 	return nil
 }
 
+// RaftStorageDeleteIds deletes multiple items by their IDs.
 type RaftStorageDeleteIds struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Ids           []uint64               `protobuf:"varint,1,rep,packed,name=ids,proto3" json:"ids,omitempty"`
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// List of IDs to delete.
+	Ids           []uint64 `protobuf:"varint,1,rep,packed,name=ids,proto3" json:"ids,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -525,15 +541,15 @@ func (x *RaftStorageDeleteIds) GetIds() []uint64 {
 	return nil
 }
 
+// RaftStorageCommand represents a single storage operation.
 type RaftStorageCommand struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Types that are valid to be assigned to Command:
 	//
 	//	*RaftStorageCommand_Delete
 	//	*RaftStorageCommand_Insert
-	//	*RaftStorageCommand_Flags
-	//	*RaftStorageCommand_Ttl
 	//	*RaftStorageCommand_Update
+	//	*RaftStorageCommand_UpdateMeta
 	Command       isRaftStorageCommand_Command `protobuf_oneof:"command"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -585,7 +601,7 @@ func (x *RaftStorageCommand) GetDelete() *RaftStorageDelete {
 	return nil
 }
 
-func (x *RaftStorageCommand) GetInsert() *RaftStorageInsert {
+func (x *RaftStorageCommand) GetInsert() *RaftStorageChange {
 	if x != nil {
 		if x, ok := x.Command.(*RaftStorageCommand_Insert); ok {
 			return x.Insert
@@ -594,28 +610,19 @@ func (x *RaftStorageCommand) GetInsert() *RaftStorageInsert {
 	return nil
 }
 
-func (x *RaftStorageCommand) GetFlags() *RaftStorageFlags {
-	if x != nil {
-		if x, ok := x.Command.(*RaftStorageCommand_Flags); ok {
-			return x.Flags
-		}
-	}
-	return nil
-}
-
-func (x *RaftStorageCommand) GetTtl() *RaftStorageTtl {
-	if x != nil {
-		if x, ok := x.Command.(*RaftStorageCommand_Ttl); ok {
-			return x.Ttl
-		}
-	}
-	return nil
-}
-
-func (x *RaftStorageCommand) GetUpdate() *RaftStorageUpdate {
+func (x *RaftStorageCommand) GetUpdate() *RaftStorageChange {
 	if x != nil {
 		if x, ok := x.Command.(*RaftStorageCommand_Update); ok {
 			return x.Update
+		}
+	}
+	return nil
+}
+
+func (x *RaftStorageCommand) GetUpdateMeta() *RaftStorageUpdateMetaData {
+	if x != nil {
+		if x, ok := x.Command.(*RaftStorageCommand_UpdateMeta); ok {
+			return x.UpdateMeta
 		}
 	}
 	return nil
@@ -626,38 +633,34 @@ type isRaftStorageCommand_Command interface {
 }
 
 type RaftStorageCommand_Delete struct {
-	Delete *RaftStorageDelete `protobuf:"bytes,1,opt,name=delete,proto3,oneof"`
+	Delete *RaftStorageDelete `protobuf:"bytes,1,opt,name=delete,proto3,oneof"` // Delete an item.
 }
 
 type RaftStorageCommand_Insert struct {
-	Insert *RaftStorageInsert `protobuf:"bytes,2,opt,name=insert,proto3,oneof"`
-}
-
-type RaftStorageCommand_Flags struct {
-	Flags *RaftStorageFlags `protobuf:"bytes,3,opt,name=flags,proto3,oneof"`
-}
-
-type RaftStorageCommand_Ttl struct {
-	Ttl *RaftStorageTtl `protobuf:"bytes,4,opt,name=ttl,proto3,oneof"`
+	Insert *RaftStorageChange `protobuf:"bytes,2,opt,name=insert,proto3,oneof"` // Insert a new item.
 }
 
 type RaftStorageCommand_Update struct {
-	Update *RaftStorageUpdate `protobuf:"bytes,5,opt,name=update,proto3,oneof"` // can be RaftStorageInsert, but be more explicit about changed fields here
+	Update *RaftStorageChange `protobuf:"bytes,3,opt,name=update,proto3,oneof"` // Update an existing item (uses same structure as insert for simplicity).
+}
+
+type RaftStorageCommand_UpdateMeta struct {
+	UpdateMeta *RaftStorageUpdateMetaData `protobuf:"bytes,4,opt,name=update_meta,json=updateMeta,proto3,oneof"` // Update only the metadata of an item.
 }
 
 func (*RaftStorageCommand_Delete) isRaftStorageCommand_Command() {}
 
 func (*RaftStorageCommand_Insert) isRaftStorageCommand_Command() {}
 
-func (*RaftStorageCommand_Flags) isRaftStorageCommand_Command() {}
-
-func (*RaftStorageCommand_Ttl) isRaftStorageCommand_Command() {}
-
 func (*RaftStorageCommand_Update) isRaftStorageCommand_Command() {}
 
+func (*RaftStorageCommand_UpdateMeta) isRaftStorageCommand_Command() {}
+
+// RaftStorageDelete deletes a single item by ID.
 type RaftStorageDelete struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Id            uint64                 `protobuf:"varint,1,opt,name=id,proto3" json:"id,omitempty"`
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// ID of the item to delete.
+	Id            uint64 `protobuf:"varint,1,opt,name=id,proto3" json:"id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -699,33 +702,33 @@ func (x *RaftStorageDelete) GetId() uint64 {
 	return 0
 }
 
-type RaftStorageInsert struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Id            uint64                 `protobuf:"varint,1,opt,name=id,proto3" json:"id,omitempty"`
-	Ttl           uint64                 `protobuf:"varint,2,opt,name=ttl,proto3" json:"ttl,omitempty"`
-	Priority      uint32                 `protobuf:"varint,3,opt,name=priority,proto3" json:"priority,omitempty"`
-	Flags         uint32                 `protobuf:"varint,4,opt,name=flags,proto3" json:"flags,omitempty"`
-	Hash          uint64                 `protobuf:"varint,5,opt,name=hash,proto3" json:"hash,omitempty"`
-	Key           []byte                 `protobuf:"bytes,6,opt,name=key,proto3" json:"key,omitempty"`
-	Value         []byte                 `protobuf:"bytes,7,opt,name=value,proto3" json:"value,omitempty"`
+// RaftStorageChange inserts or updates an item with metadata and data.
+type RaftStorageChange struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// ID of the item.
+	Id uint64 `protobuf:"varint,1,opt,name=id,proto3" json:"id,omitempty"`
+	// Metadata associated with the item.
+	Metadata []byte `protobuf:"bytes,2,opt,name=metadata,proto3" json:"metadata,omitempty"`
+	// Data content of the item.
+	Data          []byte `protobuf:"bytes,3,opt,name=data,proto3" json:"data,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *RaftStorageInsert) Reset() {
-	*x = RaftStorageInsert{}
+func (x *RaftStorageChange) Reset() {
+	*x = RaftStorageChange{}
 	mi := &file_raftcommands_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *RaftStorageInsert) String() string {
+func (x *RaftStorageChange) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*RaftStorageInsert) ProtoMessage() {}
+func (*RaftStorageChange) ProtoMessage() {}
 
-func (x *RaftStorageInsert) ProtoReflect() protoreflect.Message {
+func (x *RaftStorageChange) ProtoReflect() protoreflect.Message {
 	mi := &file_raftcommands_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -737,86 +740,57 @@ func (x *RaftStorageInsert) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use RaftStorageInsert.ProtoReflect.Descriptor instead.
-func (*RaftStorageInsert) Descriptor() ([]byte, []int) {
+// Deprecated: Use RaftStorageChange.ProtoReflect.Descriptor instead.
+func (*RaftStorageChange) Descriptor() ([]byte, []int) {
 	return file_raftcommands_proto_rawDescGZIP(), []int{9}
 }
 
-func (x *RaftStorageInsert) GetId() uint64 {
+func (x *RaftStorageChange) GetId() uint64 {
 	if x != nil {
 		return x.Id
 	}
 	return 0
 }
 
-func (x *RaftStorageInsert) GetTtl() uint64 {
+func (x *RaftStorageChange) GetMetadata() []byte {
 	if x != nil {
-		return x.Ttl
-	}
-	return 0
-}
-
-func (x *RaftStorageInsert) GetPriority() uint32 {
-	if x != nil {
-		return x.Priority
-	}
-	return 0
-}
-
-func (x *RaftStorageInsert) GetFlags() uint32 {
-	if x != nil {
-		return x.Flags
-	}
-	return 0
-}
-
-func (x *RaftStorageInsert) GetHash() uint64 {
-	if x != nil {
-		return x.Hash
-	}
-	return 0
-}
-
-func (x *RaftStorageInsert) GetKey() []byte {
-	if x != nil {
-		return x.Key
+		return x.Metadata
 	}
 	return nil
 }
 
-func (x *RaftStorageInsert) GetValue() []byte {
+func (x *RaftStorageChange) GetData() []byte {
 	if x != nil {
-		return x.Value
+		return x.Data
 	}
 	return nil
 }
 
-type RaftStorageUpdate struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Id            uint64                 `protobuf:"varint,1,opt,name=id,proto3" json:"id,omitempty"`
-	Ttl           uint64                 `protobuf:"varint,2,opt,name=ttl,proto3" json:"ttl,omitempty"`
-	Flags         uint32                 `protobuf:"varint,4,opt,name=flags,proto3" json:"flags,omitempty"` // intentionally missing fields from insert here
-	Hash          uint64                 `protobuf:"varint,5,opt,name=hash,proto3" json:"hash,omitempty"`
-	Key           []byte                 `protobuf:"bytes,6,opt,name=key,proto3" json:"key,omitempty"`
-	Value         []byte                 `protobuf:"bytes,7,opt,name=value,proto3" json:"value,omitempty"`
+// RaftStorageUpdateMetaData updates only the metadata of an item.
+type RaftStorageUpdateMetaData struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// ID of the item to update.
+	Id uint64 `protobuf:"varint,1,opt,name=id,proto3" json:"id,omitempty"`
+	// New metadata for the item.
+	Metadata      []byte `protobuf:"bytes,2,opt,name=metadata,proto3" json:"metadata,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *RaftStorageUpdate) Reset() {
-	*x = RaftStorageUpdate{}
+func (x *RaftStorageUpdateMetaData) Reset() {
+	*x = RaftStorageUpdateMetaData{}
 	mi := &file_raftcommands_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *RaftStorageUpdate) String() string {
+func (x *RaftStorageUpdateMetaData) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*RaftStorageUpdate) ProtoMessage() {}
+func (*RaftStorageUpdateMetaData) ProtoMessage() {}
 
-func (x *RaftStorageUpdate) ProtoReflect() protoreflect.Message {
+func (x *RaftStorageUpdateMetaData) ProtoReflect() protoreflect.Message {
 	mi := &file_raftcommands_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -828,168 +802,31 @@ func (x *RaftStorageUpdate) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use RaftStorageUpdate.ProtoReflect.Descriptor instead.
-func (*RaftStorageUpdate) Descriptor() ([]byte, []int) {
+// Deprecated: Use RaftStorageUpdateMetaData.ProtoReflect.Descriptor instead.
+func (*RaftStorageUpdateMetaData) Descriptor() ([]byte, []int) {
 	return file_raftcommands_proto_rawDescGZIP(), []int{10}
 }
 
-func (x *RaftStorageUpdate) GetId() uint64 {
+func (x *RaftStorageUpdateMetaData) GetId() uint64 {
 	if x != nil {
 		return x.Id
 	}
 	return 0
 }
 
-func (x *RaftStorageUpdate) GetTtl() uint64 {
+func (x *RaftStorageUpdateMetaData) GetMetadata() []byte {
 	if x != nil {
-		return x.Ttl
-	}
-	return 0
-}
-
-func (x *RaftStorageUpdate) GetFlags() uint32 {
-	if x != nil {
-		return x.Flags
-	}
-	return 0
-}
-
-func (x *RaftStorageUpdate) GetHash() uint64 {
-	if x != nil {
-		return x.Hash
-	}
-	return 0
-}
-
-func (x *RaftStorageUpdate) GetKey() []byte {
-	if x != nil {
-		return x.Key
+		return x.Metadata
 	}
 	return nil
 }
 
-func (x *RaftStorageUpdate) GetValue() []byte {
-	if x != nil {
-		return x.Value
-	}
-	return nil
-}
-
-type RaftStorageFlags struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Id            uint64                 `protobuf:"varint,1,opt,name=id,proto3" json:"id,omitempty"`
-	Flags         uint32                 `protobuf:"varint,2,opt,name=flags,proto3" json:"flags,omitempty"`
-	Mask          uint32                 `protobuf:"varint,3,opt,name=mask,proto3" json:"mask,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *RaftStorageFlags) Reset() {
-	*x = RaftStorageFlags{}
-	mi := &file_raftcommands_proto_msgTypes[11]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *RaftStorageFlags) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*RaftStorageFlags) ProtoMessage() {}
-
-func (x *RaftStorageFlags) ProtoReflect() protoreflect.Message {
-	mi := &file_raftcommands_proto_msgTypes[11]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use RaftStorageFlags.ProtoReflect.Descriptor instead.
-func (*RaftStorageFlags) Descriptor() ([]byte, []int) {
-	return file_raftcommands_proto_rawDescGZIP(), []int{11}
-}
-
-func (x *RaftStorageFlags) GetId() uint64 {
-	if x != nil {
-		return x.Id
-	}
-	return 0
-}
-
-func (x *RaftStorageFlags) GetFlags() uint32 {
-	if x != nil {
-		return x.Flags
-	}
-	return 0
-}
-
-func (x *RaftStorageFlags) GetMask() uint32 {
-	if x != nil {
-		return x.Mask
-	}
-	return 0
-}
-
-type RaftStorageTtl struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Id            uint64                 `protobuf:"varint,1,opt,name=id,proto3" json:"id,omitempty"`
-	Ttl           uint64                 `protobuf:"varint,2,opt,name=ttl,proto3" json:"ttl,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *RaftStorageTtl) Reset() {
-	*x = RaftStorageTtl{}
-	mi := &file_raftcommands_proto_msgTypes[12]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *RaftStorageTtl) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*RaftStorageTtl) ProtoMessage() {}
-
-func (x *RaftStorageTtl) ProtoReflect() protoreflect.Message {
-	mi := &file_raftcommands_proto_msgTypes[12]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use RaftStorageTtl.ProtoReflect.Descriptor instead.
-func (*RaftStorageTtl) Descriptor() ([]byte, []int) {
-	return file_raftcommands_proto_rawDescGZIP(), []int{12}
-}
-
-func (x *RaftStorageTtl) GetId() uint64 {
-	if x != nil {
-		return x.Id
-	}
-	return 0
-}
-
-func (x *RaftStorageTtl) GetTtl() uint64 {
-	if x != nil {
-		return x.Ttl
-	}
-	return 0
-}
-
+// RaftCreateStorage creates a new storage with an assigned ID.
 type RaftCreateStorage struct {
-	state         protoimpl.MessageState         `protogen:"open.v1"`
-	StorageId     uint32                         `protobuf:"varint,1,opt,name=storage_id,json=storageId,proto3" json:"storage_id,omitempty"`
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Internal storage ID assigned by the system.
+	StorageId uint32 `protobuf:"varint,1,opt,name=storage_id,json=storageId,proto3" json:"storage_id,omitempty"`
+	// Storage creation parameters.
 	Storage       *protobuf.CreateStorageRequest `protobuf:"bytes,2,opt,name=storage,proto3" json:"storage,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -997,7 +834,7 @@ type RaftCreateStorage struct {
 
 func (x *RaftCreateStorage) Reset() {
 	*x = RaftCreateStorage{}
-	mi := &file_raftcommands_proto_msgTypes[13]
+	mi := &file_raftcommands_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1009,7 +846,7 @@ func (x *RaftCreateStorage) String() string {
 func (*RaftCreateStorage) ProtoMessage() {}
 
 func (x *RaftCreateStorage) ProtoReflect() protoreflect.Message {
-	mi := &file_raftcommands_proto_msgTypes[13]
+	mi := &file_raftcommands_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1022,7 +859,7 @@ func (x *RaftCreateStorage) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RaftCreateStorage.ProtoReflect.Descriptor instead.
 func (*RaftCreateStorage) Descriptor() ([]byte, []int) {
-	return file_raftcommands_proto_rawDescGZIP(), []int{13}
+	return file_raftcommands_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *RaftCreateStorage) GetStorageId() uint32 {
@@ -1043,7 +880,7 @@ var File_raftcommands_proto protoreflect.FileDescriptor
 
 const file_raftcommands_proto_rawDesc = "" +
 	"\n" +
-	"\x12raftcommands.proto\x12\x1eio.clbs.octopusmq.grpc.raftcmd\x1a\x0emessages.proto\x1a\x1fgoogle/protobuf/timestamp.proto\"\xa0\a\n" +
+	"\x12raftcommands.proto\x12\x1eio.clbs.octopusmq.grpc.raftcmd\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x0emessages.proto\"\xa0\a\n" +
 	"\vRaftCommand\x12T\n" +
 	"\fcreate_queue\x18\x01 \x01(\v2/.io.clbs.octopusmq.grpc.raftcmd.RaftCreateQueueH\x00R\vcreateQueue\x12S\n" +
 	"\fdelete_queue\x18\x02 \x01(\v2..io.clbs.octopusmq.protobuf.DeleteQueueRequestH\x00R\vdeleteQueue\x12d\n" +
@@ -1075,38 +912,23 @@ const file_raftcommands_proto_rawDesc = "" +
 	"\x02id\x18\x01 \x01(\rR\x02id\x12N\n" +
 	"\bcommands\x18\x02 \x03(\v22.io.clbs.octopusmq.grpc.raftcmd.RaftStorageCommandR\bcommands\"(\n" +
 	"\x14RaftStorageDeleteIds\x12\x10\n" +
-	"\x03ids\x18\x01 \x03(\x04R\x03ids\"\x94\x03\n" +
+	"\x03ids\x18\x01 \x03(\x04R\x03ids\"\xe4\x02\n" +
 	"\x12RaftStorageCommand\x12K\n" +
 	"\x06delete\x18\x01 \x01(\v21.io.clbs.octopusmq.grpc.raftcmd.RaftStorageDeleteH\x00R\x06delete\x12K\n" +
-	"\x06insert\x18\x02 \x01(\v21.io.clbs.octopusmq.grpc.raftcmd.RaftStorageInsertH\x00R\x06insert\x12H\n" +
-	"\x05flags\x18\x03 \x01(\v20.io.clbs.octopusmq.grpc.raftcmd.RaftStorageFlagsH\x00R\x05flags\x12B\n" +
-	"\x03ttl\x18\x04 \x01(\v2..io.clbs.octopusmq.grpc.raftcmd.RaftStorageTtlH\x00R\x03ttl\x12K\n" +
-	"\x06update\x18\x05 \x01(\v21.io.clbs.octopusmq.grpc.raftcmd.RaftStorageUpdateH\x00R\x06updateB\t\n" +
+	"\x06insert\x18\x02 \x01(\v21.io.clbs.octopusmq.grpc.raftcmd.RaftStorageChangeH\x00R\x06insert\x12K\n" +
+	"\x06update\x18\x03 \x01(\v21.io.clbs.octopusmq.grpc.raftcmd.RaftStorageChangeH\x00R\x06update\x12\\\n" +
+	"\vupdate_meta\x18\x04 \x01(\v29.io.clbs.octopusmq.grpc.raftcmd.RaftStorageUpdateMetaDataH\x00R\n" +
+	"updateMetaB\t\n" +
 	"\acommand\"#\n" +
 	"\x11RaftStorageDelete\x12\x0e\n" +
-	"\x02id\x18\x01 \x01(\x04R\x02id\"\xa3\x01\n" +
-	"\x11RaftStorageInsert\x12\x0e\n" +
-	"\x02id\x18\x01 \x01(\x04R\x02id\x12\x10\n" +
-	"\x03ttl\x18\x02 \x01(\x04R\x03ttl\x12\x1a\n" +
-	"\bpriority\x18\x03 \x01(\rR\bpriority\x12\x14\n" +
-	"\x05flags\x18\x04 \x01(\rR\x05flags\x12\x12\n" +
-	"\x04hash\x18\x05 \x01(\x04R\x04hash\x12\x10\n" +
-	"\x03key\x18\x06 \x01(\fR\x03key\x12\x14\n" +
-	"\x05value\x18\a \x01(\fR\x05value\"\x87\x01\n" +
-	"\x11RaftStorageUpdate\x12\x0e\n" +
-	"\x02id\x18\x01 \x01(\x04R\x02id\x12\x10\n" +
-	"\x03ttl\x18\x02 \x01(\x04R\x03ttl\x12\x14\n" +
-	"\x05flags\x18\x04 \x01(\rR\x05flags\x12\x12\n" +
-	"\x04hash\x18\x05 \x01(\x04R\x04hash\x12\x10\n" +
-	"\x03key\x18\x06 \x01(\fR\x03key\x12\x14\n" +
-	"\x05value\x18\a \x01(\fR\x05value\"L\n" +
-	"\x10RaftStorageFlags\x12\x0e\n" +
-	"\x02id\x18\x01 \x01(\x04R\x02id\x12\x14\n" +
-	"\x05flags\x18\x02 \x01(\rR\x05flags\x12\x12\n" +
-	"\x04mask\x18\x03 \x01(\rR\x04mask\"2\n" +
-	"\x0eRaftStorageTtl\x12\x0e\n" +
-	"\x02id\x18\x01 \x01(\x04R\x02id\x12\x10\n" +
-	"\x03ttl\x18\x02 \x01(\x04R\x03ttl\"~\n" +
+	"\x02id\x18\x01 \x01(\x04R\x02id\"S\n" +
+	"\x11RaftStorageChange\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\x04R\x02id\x12\x1a\n" +
+	"\bmetadata\x18\x02 \x01(\fR\bmetadata\x12\x12\n" +
+	"\x04data\x18\x03 \x01(\fR\x04data\"G\n" +
+	"\x19RaftStorageUpdateMetaData\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\x04R\x02id\x12\x1a\n" +
+	"\bmetadata\x18\x02 \x01(\fR\bmetadata\"~\n" +
 	"\x11RaftCreateStorage\x12\x1d\n" +
 	"\n" +
 	"storage_id\x18\x01 \x01(\rR\tstorageId\x12J\n" +
@@ -1124,7 +946,7 @@ func file_raftcommands_proto_rawDescGZIP() []byte {
 	return file_raftcommands_proto_rawDescData
 }
 
-var file_raftcommands_proto_msgTypes = make([]protoimpl.MessageInfo, 14)
+var file_raftcommands_proto_msgTypes = make([]protoimpl.MessageInfo, 12)
 var file_raftcommands_proto_goTypes = []any{
 	(*RaftCommand)(nil),                   // 0: io.clbs.octopusmq.grpc.raftcmd.RaftCommand
 	(*RaftCreateQueue)(nil),               // 1: io.clbs.octopusmq.grpc.raftcmd.RaftCreateQueue
@@ -1135,43 +957,40 @@ var file_raftcommands_proto_goTypes = []any{
 	(*RaftStorageDeleteIds)(nil),          // 6: io.clbs.octopusmq.grpc.raftcmd.RaftStorageDeleteIds
 	(*RaftStorageCommand)(nil),            // 7: io.clbs.octopusmq.grpc.raftcmd.RaftStorageCommand
 	(*RaftStorageDelete)(nil),             // 8: io.clbs.octopusmq.grpc.raftcmd.RaftStorageDelete
-	(*RaftStorageInsert)(nil),             // 9: io.clbs.octopusmq.grpc.raftcmd.RaftStorageInsert
-	(*RaftStorageUpdate)(nil),             // 10: io.clbs.octopusmq.grpc.raftcmd.RaftStorageUpdate
-	(*RaftStorageFlags)(nil),              // 11: io.clbs.octopusmq.grpc.raftcmd.RaftStorageFlags
-	(*RaftStorageTtl)(nil),                // 12: io.clbs.octopusmq.grpc.raftcmd.RaftStorageTtl
-	(*RaftCreateStorage)(nil),             // 13: io.clbs.octopusmq.grpc.raftcmd.RaftCreateStorage
-	(*protobuf.DeleteQueueRequest)(nil),   // 14: io.clbs.octopusmq.protobuf.DeleteQueueRequest
-	(*protobuf.ResizeQueueRequest)(nil),   // 15: io.clbs.octopusmq.protobuf.ResizeQueueRequest
-	(*protobuf.DeleteStorageRequest)(nil), // 16: io.clbs.octopusmq.protobuf.DeleteStorageRequest
-	(*protobuf.CreateQueueRequest)(nil),   // 17: io.clbs.octopusmq.protobuf.CreateQueueRequest
-	(*timestamppb.Timestamp)(nil),         // 18: google.protobuf.Timestamp
-	(*protobuf.CreateStorageRequest)(nil), // 19: io.clbs.octopusmq.protobuf.CreateStorageRequest
+	(*RaftStorageChange)(nil),             // 9: io.clbs.octopusmq.grpc.raftcmd.RaftStorageChange
+	(*RaftStorageUpdateMetaData)(nil),     // 10: io.clbs.octopusmq.grpc.raftcmd.RaftStorageUpdateMetaData
+	(*RaftCreateStorage)(nil),             // 11: io.clbs.octopusmq.grpc.raftcmd.RaftCreateStorage
+	(*protobuf.DeleteQueueRequest)(nil),   // 12: io.clbs.octopusmq.protobuf.DeleteQueueRequest
+	(*protobuf.ResizeQueueRequest)(nil),   // 13: io.clbs.octopusmq.protobuf.ResizeQueueRequest
+	(*protobuf.DeleteStorageRequest)(nil), // 14: io.clbs.octopusmq.protobuf.DeleteStorageRequest
+	(*protobuf.CreateQueueRequest)(nil),   // 15: io.clbs.octopusmq.protobuf.CreateQueueRequest
+	(*timestamppb.Timestamp)(nil),         // 16: google.protobuf.Timestamp
+	(*protobuf.CreateStorageRequest)(nil), // 17: io.clbs.octopusmq.protobuf.CreateStorageRequest
 }
 var file_raftcommands_proto_depIdxs = []int32{
 	1,  // 0: io.clbs.octopusmq.grpc.raftcmd.RaftCommand.create_queue:type_name -> io.clbs.octopusmq.grpc.raftcmd.RaftCreateQueue
-	14, // 1: io.clbs.octopusmq.grpc.raftcmd.RaftCommand.delete_queue:type_name -> io.clbs.octopusmq.protobuf.DeleteQueueRequest
+	12, // 1: io.clbs.octopusmq.grpc.raftcmd.RaftCommand.delete_queue:type_name -> io.clbs.octopusmq.protobuf.DeleteQueueRequest
 	2,  // 2: io.clbs.octopusmq.grpc.raftcmd.RaftCommand.pause_resume_queue:type_name -> io.clbs.octopusmq.grpc.raftcmd.RaftPauseResumeQueue
 	3,  // 3: io.clbs.octopusmq.grpc.raftcmd.RaftCommand.purge_items:type_name -> io.clbs.octopusmq.grpc.raftcmd.RaftPurgeItems
 	5,  // 4: io.clbs.octopusmq.grpc.raftcmd.RaftCommand.storage_commands:type_name -> io.clbs.octopusmq.grpc.raftcmd.RaftStorageCommands
 	6,  // 5: io.clbs.octopusmq.grpc.raftcmd.RaftCommand.storage_delete_ids:type_name -> io.clbs.octopusmq.grpc.raftcmd.RaftStorageDeleteIds
 	4,  // 6: io.clbs.octopusmq.grpc.raftcmd.RaftCommand.start_noop:type_name -> io.clbs.octopusmq.grpc.raftcmd.RaftStartNoop
-	15, // 7: io.clbs.octopusmq.grpc.raftcmd.RaftCommand.resize_queue:type_name -> io.clbs.octopusmq.protobuf.ResizeQueueRequest
-	13, // 8: io.clbs.octopusmq.grpc.raftcmd.RaftCommand.create_storage:type_name -> io.clbs.octopusmq.grpc.raftcmd.RaftCreateStorage
-	16, // 9: io.clbs.octopusmq.grpc.raftcmd.RaftCommand.delete_storage:type_name -> io.clbs.octopusmq.protobuf.DeleteStorageRequest
-	17, // 10: io.clbs.octopusmq.grpc.raftcmd.RaftCreateQueue.queue:type_name -> io.clbs.octopusmq.protobuf.CreateQueueRequest
-	18, // 11: io.clbs.octopusmq.grpc.raftcmd.RaftStartNoop.start_time:type_name -> google.protobuf.Timestamp
+	13, // 7: io.clbs.octopusmq.grpc.raftcmd.RaftCommand.resize_queue:type_name -> io.clbs.octopusmq.protobuf.ResizeQueueRequest
+	11, // 8: io.clbs.octopusmq.grpc.raftcmd.RaftCommand.create_storage:type_name -> io.clbs.octopusmq.grpc.raftcmd.RaftCreateStorage
+	14, // 9: io.clbs.octopusmq.grpc.raftcmd.RaftCommand.delete_storage:type_name -> io.clbs.octopusmq.protobuf.DeleteStorageRequest
+	15, // 10: io.clbs.octopusmq.grpc.raftcmd.RaftCreateQueue.queue:type_name -> io.clbs.octopusmq.protobuf.CreateQueueRequest
+	16, // 11: io.clbs.octopusmq.grpc.raftcmd.RaftStartNoop.start_time:type_name -> google.protobuf.Timestamp
 	7,  // 12: io.clbs.octopusmq.grpc.raftcmd.RaftStorageCommands.commands:type_name -> io.clbs.octopusmq.grpc.raftcmd.RaftStorageCommand
 	8,  // 13: io.clbs.octopusmq.grpc.raftcmd.RaftStorageCommand.delete:type_name -> io.clbs.octopusmq.grpc.raftcmd.RaftStorageDelete
-	9,  // 14: io.clbs.octopusmq.grpc.raftcmd.RaftStorageCommand.insert:type_name -> io.clbs.octopusmq.grpc.raftcmd.RaftStorageInsert
-	11, // 15: io.clbs.octopusmq.grpc.raftcmd.RaftStorageCommand.flags:type_name -> io.clbs.octopusmq.grpc.raftcmd.RaftStorageFlags
-	12, // 16: io.clbs.octopusmq.grpc.raftcmd.RaftStorageCommand.ttl:type_name -> io.clbs.octopusmq.grpc.raftcmd.RaftStorageTtl
-	10, // 17: io.clbs.octopusmq.grpc.raftcmd.RaftStorageCommand.update:type_name -> io.clbs.octopusmq.grpc.raftcmd.RaftStorageUpdate
-	19, // 18: io.clbs.octopusmq.grpc.raftcmd.RaftCreateStorage.storage:type_name -> io.clbs.octopusmq.protobuf.CreateStorageRequest
-	19, // [19:19] is the sub-list for method output_type
-	19, // [19:19] is the sub-list for method input_type
-	19, // [19:19] is the sub-list for extension type_name
-	19, // [19:19] is the sub-list for extension extendee
-	0,  // [0:19] is the sub-list for field type_name
+	9,  // 14: io.clbs.octopusmq.grpc.raftcmd.RaftStorageCommand.insert:type_name -> io.clbs.octopusmq.grpc.raftcmd.RaftStorageChange
+	9,  // 15: io.clbs.octopusmq.grpc.raftcmd.RaftStorageCommand.update:type_name -> io.clbs.octopusmq.grpc.raftcmd.RaftStorageChange
+	10, // 16: io.clbs.octopusmq.grpc.raftcmd.RaftStorageCommand.update_meta:type_name -> io.clbs.octopusmq.grpc.raftcmd.RaftStorageUpdateMetaData
+	17, // 17: io.clbs.octopusmq.grpc.raftcmd.RaftCreateStorage.storage:type_name -> io.clbs.octopusmq.protobuf.CreateStorageRequest
+	18, // [18:18] is the sub-list for method output_type
+	18, // [18:18] is the sub-list for method input_type
+	18, // [18:18] is the sub-list for extension type_name
+	18, // [18:18] is the sub-list for extension extendee
+	0,  // [0:18] is the sub-list for field type_name
 }
 
 func init() { file_raftcommands_proto_init() }
@@ -1194,9 +1013,8 @@ func file_raftcommands_proto_init() {
 	file_raftcommands_proto_msgTypes[7].OneofWrappers = []any{
 		(*RaftStorageCommand_Delete)(nil),
 		(*RaftStorageCommand_Insert)(nil),
-		(*RaftStorageCommand_Flags)(nil),
-		(*RaftStorageCommand_Ttl)(nil),
 		(*RaftStorageCommand_Update)(nil),
+		(*RaftStorageCommand_UpdateMeta)(nil),
 	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
@@ -1204,7 +1022,7 @@ func file_raftcommands_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_raftcommands_proto_rawDesc), len(file_raftcommands_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   14,
+			NumMessages:   12,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

@@ -1,9 +1,10 @@
 syntax = "proto3";
 package io.clbs.octopusmq.grpc.management;
-option go_package = "github.com/clbs-io/octopusmq/pkg/grpcmgmtpb";
 
 import "google/protobuf/empty.proto";
 import "messages.proto";
+
+option go_package = "github.com/clbs-io/octopusmq/pkg/grpcmgmtpb";
 
 // The service represents management on the queues.
 service ManagementService {

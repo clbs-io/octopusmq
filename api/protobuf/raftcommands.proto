@@ -1,105 +1,114 @@
 syntax = "proto3";
 package io.clbs.octopusmq.grpc.raftcmd;
+
+import "google/protobuf/timestamp.proto";
+import "messages.proto";
+
 option go_package = "github.com/clbs-io/octopusmq/pkg/grpcraftcmdpb";
 
-import "messages.proto";
-import "google/protobuf/timestamp.proto";
-
+// RaftCommand represents a command that will be replicated through the Raft consensus protocol.
 message RaftCommand {
-    oneof command {
-        RaftCreateQueue create_queue = 1;
-        io.clbs.octopusmq.protobuf.DeleteQueueRequest delete_queue = 2;
-        RaftPauseResumeQueue pause_resume_queue = 3;
-        RaftPurgeItems purge_items = 4;
+  oneof command {
+    RaftCreateQueue create_queue = 1; // Create a new queue.
+    io.clbs.octopusmq.protobuf.DeleteQueueRequest delete_queue = 2; // Delete an existing queue.
+    RaftPauseResumeQueue pause_resume_queue = 3; // Pause or resume a queue.
+    RaftPurgeItems purge_items = 4; // Purge items from queues.
 
-        // internal storage commands
-        RaftStorageCommands storage_commands = 5;
-        RaftStorageDeleteIds storage_delete_ids = 6;
+    // Internal storage commands
+    RaftStorageCommands storage_commands = 5; // Batch of storage operations.
+    RaftStorageDeleteIds storage_delete_ids = 6; // Delete multiple items by ID.
 
-        // starting hack
-        RaftStartNoop start_noop = 7;
+    // Starting synchronization
+    RaftStartNoop start_noop = 7; // No-op command to sync cluster start time.
 
-        // next commands
-        io.clbs.octopusmq.protobuf.ResizeQueueRequest resize_queue = 8;
+    // Queue management commands
+    io.clbs.octopusmq.protobuf.ResizeQueueRequest resize_queue = 8; // Resize an existing queue.
 
-        // storage
-        RaftCreateStorage create_storage = 9;
-        io.clbs.octopusmq.protobuf.DeleteStorageRequest delete_storage = 10;
-    }
+    // Storage management commands
+    RaftCreateStorage create_storage = 9; // Create a new storage.
+    io.clbs.octopusmq.protobuf.DeleteStorageRequest delete_storage = 10; // Delete an existing storage.
+  }
 }
 
+// RaftCreateQueue creates a new queue with an assigned ID.
 message RaftCreateQueue {
-    uint32 queue_id = 1;
-    io.clbs.octopusmq.protobuf.CreateQueueRequest queue = 2;
+  // Internal queue ID assigned by the system.
+  uint32 queue_id = 1;
+  // Queue creation parameters.
+  io.clbs.octopusmq.protobuf.CreateQueueRequest queue = 2;
 }
 
+// RaftPauseResumeQueue pauses or resumes a queue.
 message RaftPauseResumeQueue {
-    string queue_name = 1;
-    bool pause = 2;
+  // Name of the queue to pause or resume.
+  string queue_name = 1;
+  // If true, pause the queue; if false, resume it.
+  bool pause = 2;
 }
 
-message RaftPurgeItems {
-}
+// RaftPurgeItems purges expired or completed items from queues.
+message RaftPurgeItems {}
 
+// RaftStartNoop is used to synchronize cluster start time and ensure consistency.
 message RaftStartNoop {
-    google.protobuf.Timestamp start_time = 1;
-    string uuid = 2;
+  // Timestamp when the cluster started.
+  google.protobuf.Timestamp start_time = 1;
+  // Unique identifier for this start operation.
+  string uuid = 2;
 }
 
+// RaftStorageCommands contains a batch of storage operations to be applied atomically.
 message RaftStorageCommands {
-    uint32 id = 1;
-    repeated RaftStorageCommand commands = 2;
+  // Internal storage ID.
+  uint32 id = 1;
+  // List of storage commands to execute.
+  repeated RaftStorageCommand commands = 2;
 }
 
+// RaftStorageDeleteIds deletes multiple items by their IDs.
 message RaftStorageDeleteIds {
-    repeated uint64 ids = 1;
+  // List of IDs to delete.
+  repeated uint64 ids = 1;
 }
 
+// RaftStorageCommand represents a single storage operation.
 message RaftStorageCommand {
-    oneof command {
-        RaftStorageDelete delete = 1;
-        RaftStorageInsert insert = 2;
-        RaftStorageFlags flags = 3;
-        RaftStorageTtl ttl = 4;
-        RaftStorageUpdate update = 5; // can be RaftStorageInsert, but be more explicit about changed fields here
-    }
+  oneof command {
+    RaftStorageDelete delete = 1; // Delete an item.
+    RaftStorageChange insert = 2; // Insert a new item.
+    RaftStorageChange update = 3; // Update an existing item (uses same structure as insert for simplicity).
+    RaftStorageUpdateMetaData update_meta = 4; // Update only the metadata of an item.
+  }
 }
 
+// RaftStorageDelete deletes a single item by ID.
 message RaftStorageDelete {
-    uint64 id = 1;
+  // ID of the item to delete.
+  uint64 id = 1;
 }
 
-message RaftStorageInsert {
-    uint64 id = 1;
-    uint64 ttl = 2;
-    uint32 priority = 3;
-    uint32 flags = 4;
-    uint64 hash = 5;
-    bytes key = 6;
-    bytes value = 7;
+// RaftStorageChange inserts or updates an item with metadata and data.
+message RaftStorageChange {
+  // ID of the item.
+  uint64 id = 1;
+  // Metadata associated with the item.
+  bytes metadata = 2;
+  // Data content of the item.
+  bytes data = 3;
 }
 
-message RaftStorageUpdate {
-    uint64 id = 1;
-    uint64 ttl = 2;
-    uint32 flags = 4; // intentionally missing fields from insert here
-    uint64 hash = 5;
-    bytes key = 6;
-    bytes value = 7;
+// RaftStorageUpdateMetaData updates only the metadata of an item.
+message RaftStorageUpdateMetaData {
+  // ID of the item to update.
+  uint64 id = 1;
+  // New metadata for the item.
+  bytes metadata = 2;
 }
 
-message RaftStorageFlags {
-    uint64 id = 1;
-    uint32 flags = 2;
-    uint32 mask = 3;
-}
-
-message RaftStorageTtl {
-    uint64 id = 1;
-    uint64 ttl = 2;
-}
-
+// RaftCreateStorage creates a new storage with an assigned ID.
 message RaftCreateStorage {
-    uint32 storage_id = 1;
-    io.clbs.octopusmq.protobuf.CreateStorageRequest storage = 2;
+  // Internal storage ID assigned by the system.
+  uint32 storage_id = 1;
+  // Storage creation parameters.
+  io.clbs.octopusmq.protobuf.CreateStorageRequest storage = 2;
 }
