@@ -1,19 +1,20 @@
 package client
 
 import (
-	"errors"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 var (
-	ErrQueueNotFound      = errors.New("queue not found")
-	ErrQueueAlreadyExists = errors.New("queue already exists")
-	ErrQueuePaused        = errors.New("queue is paused")
-	ErrQueueClientClosed  = errors.New("queue client closed")
-	ErrQueueTimeout       = errors.New("queue operation timeout")
+	ErrQueueNotFound      = status.Error(codes.NotFound, "queue not found")
+	ErrQueueAlreadyExists = status.Error(codes.AlreadyExists, "queue already exists")
+	ErrQueuePaused        = status.Error(codes.Unavailable, "queue is paused")
+	ErrQueueClientClosed  = status.Error(codes.Canceled, "queue client closed")
+	ErrQueueTimeout       = status.Error(codes.DeadlineExceeded, "queue operation timeout")
 
-	ErrStorageNotFound      = errors.New("storage not found")
-	ErrStorageAlreadyExists = errors.New("storage already exists")
-	ErrStorageClientClosed  = errors.New("storage client closed")
-	ErrStorageTimeout       = errors.New("storage operation timeout")
-	ErrStorageKeyNotFound   = errors.New("storage key not found")
+	ErrStorageNotFound      = status.Error(codes.NotFound, "storage not found")
+	ErrStorageAlreadyExists = status.Error(codes.AlreadyExists, "storage already exists")
+	ErrStorageClientClosed  = status.Error(codes.Canceled, "storage client closed")
+	ErrStorageTimeout       = status.Error(codes.DeadlineExceeded, "storage operation timeout")
+	ErrStorageKeyNotFound   = status.Error(codes.NotFound, "storage key not found")
 )

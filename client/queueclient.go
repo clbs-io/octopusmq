@@ -2,7 +2,6 @@ package client
 
 import (
 	"context"
-	"fmt"
 	"io"
 	"sync"
 
@@ -104,10 +103,10 @@ func (c *QueueClient) open() (err error) {
 	}
 	if st, ok := resp.Response.(*pb.QueueResponse_Status); ok {
 		if st.Status.Code != pb.StatusCode_STATUS_CODE_OK {
-			return fmt.Errorf("setup failed: %v", st.Status)
+			return decodestatus(st)
 		}
 	} else {
-		return fmt.Errorf("setup failed, invalid response type: %T", resp)
+		return status.Errorf(codes.Internal, "setup failed, invalid response type: %T", resp)
 	}
 	return
 }
@@ -122,7 +121,7 @@ func (c *QueueClient) handlesend(cmd *pb.QueueRequest) (ch chan *pb.QueueRespons
 
 	c.corrid++
 	if _, ok := c.corrmap[c.corrid]; ok { // damn shouldnt happen, fucking so many map check, that shit couldnt be fast at all
-		return nil, fmt.Errorf("correlation id collision: %d", c.corrid)
+		return nil, status.Errorf(codes.Internal, "correlation id collision: %d", c.corrid)
 	}
 	cmd.CorrelationId = c.corrid
 	err = c.stream.Send(cmd)
@@ -150,12 +149,12 @@ func (c *QueueClient) handleresp(cmd *pb.QueueRequest) (*pb.QueueResponse, error
 	select {
 	case reqp, ok := <-ch:
 		if !ok {
-			return nil, fmt.Errorf("forcibly closed")
+			return nil, status.Error(codes.Canceled, "forcibly closed")
 		}
 		return reqp, nil
 	case err, ok := <-c.errch:
 		if !ok {
-			return nil, fmt.Errorf("already in error") // already error
+			return nil, status.Error(codes.Internal, "already in error") // already error
 		}
 		if st, ok := status.FromError(err); ok {
 			switch st.Code() {
@@ -171,14 +170,12 @@ func (c *QueueClient) handleresp(cmd *pb.QueueRequest) (*pb.QueueResponse, error
 
 func decodestatus(cc *pb.QueueResponse_Status) error {
 	switch cc.Status.Code {
-	case pb.StatusCode_STATUS_CODE_OK:
-		return fmt.Errorf("unexpectedly ok")
 	case pb.StatusCode_STATUS_CODE_TIMEOUT:
 		return ErrQueueTimeout
 	case pb.StatusCode_STATUS_CODE_QUEUE_NOT_FOUND:
 		return ErrQueueNotFound
 	}
-	return fmt.Errorf("command error: %s, status: %d", cc.Status.Message, cc.Status.Code)
+	return status.Errorf(codes.Internal, "command error: %s, status: %d", cc.Status.Message, cc.Status.Code)
 }
 
 func (c *QueueClient) Close() (err error) {
@@ -211,7 +208,7 @@ func (c *QueueClient) Enqueue(req *pb.EnqueueRequest) (*pb.EnqueueResponse, erro
 	case *pb.QueueResponse_Enqueue:
 		return cc.Enqueue, nil
 	default:
-		return nil, fmt.Errorf("unexpected response type: %T", cc)
+		return nil, status.Errorf(codes.Internal, "unexpected response type: %T", cc)
 	}
 }
 
@@ -230,7 +227,7 @@ func (c *QueueClient) BatchEnqueue(req *pb.BatchEnqueueRequest) (*pb.BatchEnqueu
 	case *pb.QueueResponse_BatchEnqueue:
 		return cc.BatchEnqueue, nil
 	default:
-		return nil, fmt.Errorf("unexpected response type: %T", cc)
+		return nil, status.Errorf(codes.Internal, "unexpected response type: %T", cc)
 	}
 }
 
@@ -249,7 +246,7 @@ func (c *QueueClient) CommitSingle(req *pb.CommitSingleRequest) (*pb.CommitSingl
 	case *pb.QueueResponse_CommitSingle:
 		return cc.CommitSingle, nil
 	default:
-		return nil, fmt.Errorf("unexpected response type: %T", cc)
+		return nil, status.Errorf(codes.Internal, "unexpected response type: %T", cc)
 	}
 }
 
@@ -268,7 +265,7 @@ func (c *QueueClient) Commit(req *pb.CommitRequest) (*pb.CommitResponse, error) 
 	case *pb.QueueResponse_Commit:
 		return cc.Commit, nil
 	default:
-		return nil, fmt.Errorf("unexpected response type: %T", cc)
+		return nil, status.Errorf(codes.Internal, "unexpected response type: %T", cc)
 	}
 }
 
@@ -287,7 +284,7 @@ func (c *QueueClient) RequeueSingle(req *pb.RequeueSingleRequest) (*pb.RequeueSi
 	case *pb.QueueResponse_RequeueSingle:
 		return cc.RequeueSingle, nil
 	default:
-		return nil, fmt.Errorf("unexpected response type: %T", cc)
+		return nil, status.Errorf(codes.Internal, "unexpected response type: %T", cc)
 	}
 }
 
@@ -306,7 +303,7 @@ func (c *QueueClient) Requeue(req *pb.RequeueRequest) (*pb.RequeueResponse, erro
 	case *pb.QueueResponse_Requeue:
 		return cc.Requeue, nil
 	default:
-		return nil, fmt.Errorf("unexpected response type: %T", cc)
+		return nil, status.Errorf(codes.Internal, "unexpected response type: %T", cc)
 	}
 }
 
@@ -325,7 +322,7 @@ func (c *QueueClient) DeleteSingle(req *pb.DeleteSingleRequest) (*pb.DeleteSingl
 	case *pb.QueueResponse_DeleteSingle:
 		return cc.DeleteSingle, nil
 	default:
-		return nil, fmt.Errorf("unexpected response type: %T", cc)
+		return nil, status.Errorf(codes.Internal, "unexpected response type: %T", cc)
 	}
 }
 
@@ -344,7 +341,7 @@ func (c *QueueClient) Delete(req *pb.DeleteRequest) (*pb.DeleteResponse, error) 
 	case *pb.QueueResponse_Delete:
 		return cc.Delete, nil
 	default:
-		return nil, fmt.Errorf("unexpected response type: %T", cc)
+		return nil, status.Errorf(codes.Internal, "unexpected response type: %T", cc)
 	}
 }
 
@@ -364,7 +361,7 @@ func (c *QueueClient) Pull(req *pb.PullRequest) (*pb.PullResponse, error) {
 	case *pb.QueueResponse_Pull:
 		return cc.Pull, nil
 	default:
-		return nil, fmt.Errorf("unexpected response type: %T", cc)
+		return nil, status.Errorf(codes.Internal, "unexpected response type: %T", cc)
 	}
 }
 
@@ -383,7 +380,7 @@ func (c *QueueClient) PullSingle(req *pb.PullSingleRequest) (*pb.PullSingleRespo
 	case *pb.QueueResponse_PullSingle:
 		return cc.PullSingle, nil
 	default:
-		return nil, fmt.Errorf("unexpected response type: %T", cc)
+		return nil, status.Errorf(codes.Internal, "unexpected response type: %T", cc)
 	}
 }
 
@@ -403,7 +400,7 @@ func (c *QueueClient) Noop() error {
 		}
 		return decodestatus(cc)
 	default:
-		return fmt.Errorf("unexpected response type: %T", cc)
+		return status.Errorf(codes.Internal, "unexpected response type: %T", cc)
 	}
 }
 
@@ -422,6 +419,6 @@ func (c *QueueClient) GetInfo() (*pb.GetQueueInfoResponse, error) {
 	case *pb.QueueResponse_GetQueueInfo:
 		return cc.GetQueueInfo, nil
 	default:
-		return nil, fmt.Errorf("unexpected response type: %T", cc)
+		return nil, status.Errorf(codes.Internal, "unexpected response type: %T", cc)
 	}
 }

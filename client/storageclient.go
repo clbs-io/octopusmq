@@ -2,7 +2,6 @@ package client
 
 import (
 	"context"
-	"fmt"
 	"io"
 	"sync"
 
@@ -104,10 +103,10 @@ func (c *StorageClient) open() (err error) {
 	}
 	if st, ok := resp.Response.(*pb.StorageResponse_Status); ok {
 		if st.Status.Code != pb.StatusCode_STATUS_CODE_OK {
-			return fmt.Errorf("setup failed: %v", st.Status)
+			return decodestoragestatus(st)
 		}
 	} else {
-		return fmt.Errorf("setup failed, invalid response type: %T", resp)
+		return status.Errorf(codes.Internal, "setup failed, invalid response type: %T", resp)
 	}
 	return
 }
@@ -130,7 +129,7 @@ func (c *StorageClient) handlesend(cmd *pb.StorageRequest, keepid bool) (ch chan
 	}
 
 	if _, ok := c.corrmap[corrid]; ok { // damn shouldnt happen, fucking so many map check, that shit couldnt be fast at all
-		return nil, fmt.Errorf("correlation id collision: %d", corrid)
+		return nil, status.Errorf(codes.Internal, "correlation id collision: %d", corrid)
 	}
 	err = c.stream.Send(cmd)
 	if err != nil {
@@ -157,12 +156,12 @@ func (c *StorageClient) handleresp(cmd *pb.StorageRequest, keepid bool) (*pb.Sto
 	select {
 	case reqp, ok := <-ch:
 		if !ok {
-			return nil, fmt.Errorf("forcibly closed")
+			return nil, status.Error(codes.Canceled, "forcibly closed")
 		}
 		return reqp, nil
 	case err, ok := <-c.errch:
 		if !ok {
-			return nil, fmt.Errorf("already in error") // already error
+			return nil, status.Error(codes.Internal, "already in error") // already error
 		}
 		if st, ok := status.FromError(err); ok {
 			switch st.Code() {
@@ -178,8 +177,6 @@ func (c *StorageClient) handleresp(cmd *pb.StorageRequest, keepid bool) (*pb.Sto
 
 func decodestoragestatus(cc *pb.StorageResponse_Status) error {
 	switch cc.Status.Code {
-	case pb.StatusCode_STATUS_CODE_OK:
-		return fmt.Errorf("unexpectedly ok")
 	case pb.StatusCode_STATUS_CODE_TIMEOUT:
 		return ErrStorageTimeout
 	case pb.StatusCode_STATUS_CODE_ITEM_NOT_FOUND:
@@ -187,7 +184,7 @@ func decodestoragestatus(cc *pb.StorageResponse_Status) error {
 	case pb.StatusCode_STATUS_CODE_STORAGE_NOT_FOUND:
 		return ErrStorageNotFound
 	}
-	return fmt.Errorf("command error: %s, status: %d", cc.Status.Message, cc.Status.Code)
+	return status.Errorf(codes.Internal, "command error: %s, status: %d", cc.Status.Message, cc.Status.Code)
 }
 
 func (c *StorageClient) Close() (err error) {
@@ -220,7 +217,7 @@ func (c *StorageClient) Get(req *pb.StorageGetRequest) (*pb.StorageDataResponse,
 	case *pb.StorageResponse_DataResponse:
 		return cc.DataResponse, nil
 	default:
-		return nil, fmt.Errorf("unexpected response type: %T", cc)
+		return nil, status.Errorf(codes.Internal, "unexpected response type: %T", cc)
 	}
 }
 
@@ -245,7 +242,7 @@ func (c *StorageClient) GetKeys(req *pb.StorageGetKeysRequest) ([][]byte, error)
 				return ret, nil
 			}
 		default:
-			return nil, fmt.Errorf("unexpected response type: %T", cc)
+			return nil, status.Errorf(codes.Internal, "unexpected response type: %T", cc)
 		}
 		reqp, err = c.handleresp(&pb.StorageRequest{
 			CorrelationId: reqp.CorrelationId,
@@ -273,7 +270,7 @@ func (c *StorageClient) Set(req *pb.StorageSetRequest) error {
 		}
 		return decodestoragestatus(cc)
 	default:
-		return fmt.Errorf("unexpected response type: %T", cc)
+		return status.Errorf(codes.Internal, "unexpected response type: %T", cc)
 	}
 }
 
@@ -293,7 +290,7 @@ func (c *StorageClient) Delete(req *pb.StorageDeleteRequest) error {
 		}
 		return decodestoragestatus(cc)
 	default:
-		return fmt.Errorf("unexpected response type: %T", cc)
+		return status.Errorf(codes.Internal, "unexpected response type: %T", cc)
 	}
 }
 
@@ -312,7 +309,7 @@ func (c *StorageClient) LockAny(req *pb.StorageLockAnyWithIdRequest) (*pb.Storag
 	case *pb.StorageResponse_DataResponse:
 		return cc.DataResponse, nil
 	default:
-		return nil, fmt.Errorf("unexpected response type: %T", cc)
+		return nil, status.Errorf(codes.Internal, "unexpected response type: %T", cc)
 	}
 }
 
@@ -332,7 +329,7 @@ func (c *StorageClient) ReleaseId(req *pb.StorageReleaseIdRequest) error {
 		}
 		return decodestoragestatus(cc)
 	default:
-		return fmt.Errorf("unexpected response type: %T", cc)
+		return status.Errorf(codes.Internal, "unexpected response type: %T", cc)
 	}
 }
 
@@ -352,7 +349,7 @@ func (c *StorageClient) Noop() error {
 		}
 		return decodestoragestatus(cc)
 	default:
-		return fmt.Errorf("unexpected response type: %T", cc)
+		return status.Errorf(codes.Internal, "unexpected response type: %T", cc)
 	}
 }
 
@@ -371,6 +368,6 @@ func (c *StorageClient) GetInfo() (*pb.StorageGetInfoResponse, error) {
 	case *pb.StorageResponse_GetInfoResponse:
 		return cc.GetInfoResponse, nil
 	default:
-		return nil, fmt.Errorf("unexpected response type: %T", cc)
+		return nil, status.Errorf(codes.Internal, "unexpected response type: %T", cc)
 	}
 }

@@ -325,7 +325,7 @@ if err != nil {
 
 ### Prerequisites
 
-- Go 1.25 or later
+- Go 1.26 or later
 - Protocol Buffers compiler (protoc)
 - gRPC Go plugins
 
