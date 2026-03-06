@@ -329,10 +329,10 @@ if err != nil {
 - Protocol Buffers compiler (protoc)
 - gRPC Go plugins
 
-### Generate Protocol Buffers
+### Generate Protocol Buffers and gRPC Code
 
 ```bash
-make generate
+make codegen
 ```
 
 ### Build
@@ -353,7 +353,7 @@ OctopusMQ server is designed to run in Kubernetes as a StatefulSet. Contact dDas
 
 ## License
 
-Copyright © 2024-2025 dDash s.r.o. All rights reserved.
+Copyright © 2024-2026 dDash s.r.o. All rights reserved.
 
 This software is proprietary and confidential. The source code is not publicly available. This repository contains only the public API definitions and client libraries for integration purposes.
 

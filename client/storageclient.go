@@ -13,15 +13,15 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-// make that shit thread safe
+// StorageClient is a thread-safe client for key-value storage operations over a bidirectional stream.
 type StorageClient struct {
 	stoClient grpcstoragepb.StorageServiceClient
 	stream    grpc.BidiStreamingClient[pb.StorageRequest, pb.StorageResponse]
 	corrid    uint64
-	opts      []grpc.CallOption // like really?
+	opts      []grpc.CallOption
 	ctx       context.Context
 	stoname   string
-	closed    bool // till no close called, try to open at any cost
+	closed    bool
 	logger    *zap.SugaredLogger
 	lock      sync.Mutex
 	errch     chan error
@@ -58,7 +58,7 @@ func (c *StorageClient) receiver() {
 			c.errch <- err
 			return
 		}
-		// put r according to correlation id to proper channel, this is damn slow, maybe integrate that into caller application instead of this mess?
+		// Dispatch response to the waiting caller by correlation ID.
 		c.lock.Lock()
 		if ch, ok := c.corrmap[r.CorrelationId]; ok {
 			delete(c.corrmap, r.CorrelationId)
@@ -75,7 +75,7 @@ func (c *StorageClient) receiver() {
 func (c *StorageClient) open() (err error) {
 	c.stream, err = c.stoClient.StorageConnect(c.ctx, c.opts...)
 	if err != nil {
-		return // handle errors?
+		return
 	}
 
 	defer func() {
@@ -128,7 +128,7 @@ func (c *StorageClient) handlesend(cmd *pb.StorageRequest, keepid bool) (ch chan
 		cmd.CorrelationId = c.corrid
 	}
 
-	if _, ok := c.corrmap[corrid]; ok { // damn shouldnt happen, fucking so many map check, that shit couldnt be fast at all
+	if _, ok := c.corrmap[corrid]; ok {
 		return nil, status.Errorf(codes.Internal, "correlation id collision: %d", corrid)
 	}
 	err = c.stream.Send(cmd)
@@ -194,9 +194,9 @@ func (c *StorageClient) Close() (err error) {
 		return ErrStorageClientClosed
 	}
 	c.closed = true
-	err = c.stream.CloseSend() // closed with error... consider it just closed...
+	err = c.stream.CloseSend()
 
-	for _, ch := range c.corrmap { // just close it, damn i have to figure out a bit different way how to handle this... i just dont like it
+	for _, ch := range c.corrmap {
 		close(ch)
 	}
 	return
@@ -221,7 +221,7 @@ func (c *StorageClient) Get(req *pb.StorageGetRequest) (*pb.StorageDataResponse,
 	}
 }
 
-func (c *StorageClient) GetKeys(req *pb.StorageGetKeysRequest) ([][]byte, error) { // maybe todo chores get rid of some simple grpc structures?
+func (c *StorageClient) GetKeys(req *pb.StorageGetKeysRequest) ([][]byte, error) {
 	reqp, err := c.handleresp(&pb.StorageRequest{
 		Command: &pb.StorageRequest_GetKeys{
 			GetKeys: req,

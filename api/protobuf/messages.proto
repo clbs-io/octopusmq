@@ -13,9 +13,9 @@ message Item {
   uint64 id = 1;
   // Priority of the item. The lower the value, the lower the priority.
   uint32 priority = 2;
-  // Grouping key of the item. Items with the same key are grouped and returned together to the same receiver when the first groupped item hits the head.
+  // Grouping key of the item. Items with the same key are grouped and returned together to the same receiver when the first grouped item hits the head.
   // For example, if the first item with key "A" is pulled, all items with key "A" will be returned to the same receiver immediately after the first item is pulled.
-  // Grouping has higher priority than priority.
+  // Grouping takes precedence over priority.
   bytes key = 3;
   // Unique key, can be empty.
   bytes unique_key = 4;
@@ -25,13 +25,13 @@ message Item {
 
 // InputItem represents an item to be enqueued into the queue.
 message InputItem {
-  // Delay duration before the item becomes available to pull. Set to 0 for immediate availability.
+  // Time-to-live duration. The item expires after this duration. Set to 0 for no expiration.
   google.protobuf.Duration ttl = 1;
   // Priority of the item. The lower the value, the lower the priority.
   uint32 priority = 2;
-  // Grouping key of the item. Items with the same key are grouped and returned together to the same receiver when the first groupped item hits the head.
+  // Grouping key of the item. Items with the same key are grouped and returned together to the same receiver when the first grouped item hits the head.
   // For example, if the first item with key "A" is pulled, all items with key "A" will be returned to the same receiver immediately after the first item is pulled.
-  // Grouping has higher priority than priority.
+  // Grouping takes precedence over priority.
   bytes key = 3;
   // Unique key, can be empty.
   bytes unique_key = 4;
@@ -129,7 +129,7 @@ message GetQueueInfoResponse {
   uint32 priorities = 4;
 }
 
-// EnqueueRequest contains the item to be pushed and duration of the timeout.
+// EnqueueRequest contains the item to enqueue and an optional timeout for the operation.
 message EnqueueRequest {
   InputItem item = 1;
   google.protobuf.Duration timeout = 2;
@@ -143,7 +143,7 @@ message BatchEnqueueRequest {
   google.protobuf.Duration timeout = 2;
 }
 
-// EnqueueResponse sends back only item ID.
+// EnqueueResponse contains the server-assigned ID of the enqueued item.
 message EnqueueResponse {
   // Unique ID assigned to the enqueued item by the server.
   uint64 id = 1;
@@ -155,23 +155,23 @@ message BatchEnqueueResponse {
   repeated uint64 ids = 1;
 }
 
-// PullSingleRequest message contains duration, for how long should request wait for item if the queue is empty.
+// PullSingleRequest specifies how long to wait for an item if the queue is empty.
 message PullSingleRequest {
   google.protobuf.Duration timeout = 1;
 }
 
-// PullSingleResponse message contains the item pulled from the queue.
+// PullSingleResponse contains the item pulled from the queue.
 message PullSingleResponse {
   Item item = 1;
 }
 
-// PullRequest message: batchSize: number of items to pull, timeout: for how long should request wait for items if the queue is empty.
+// PullRequest specifies the number of items to pull and how long to wait if the queue is empty.
 message PullRequest {
   int32 batch_size = 1;
   google.protobuf.Duration timeout = 2;
 }
 
-// PullResponse message has array of pulled items.
+// PullResponse contains the items pulled from the queue.
 message PullResponse {
   repeated Item items = 1;
 }
@@ -182,12 +182,12 @@ message CommitSingleRequest {
   uint64 id = 1;
 }
 
-// CommitSingleResponse returns true if the item was committed.
+// CommitSingleResponse indicates whether the item was committed.
 message CommitSingleResponse {
   bool committed = 1;
 }
 
-// CommitRequest sends an array of item IDs to commit.
+// CommitRequest commits multiple items by their IDs.
 message CommitRequest {
   repeated uint64 ids = 1;
 }
@@ -197,17 +197,17 @@ message CommitResponse {
   int32 ret = 1;
 }
 
-// RequeueSingleRequest message contains the ID of the item to requeue.
+// RequeueSingleRequest requeues a single item.
 message RequeueSingleRequest {
   RequeueItem item = 1;
 }
 
-// RequeueSingleResponse message returns true if the item was requeued.
+// RequeueSingleResponse indicates whether the item was requeued.
 message RequeueSingleResponse {
   bool requeued = 1;
 }
 
-// RequeueRequest message sends an array of item IDs to requeue.
+// RequeueRequest requeues multiple items.
 message RequeueRequest {
   repeated RequeueItem items = 1;
 }
@@ -220,34 +220,34 @@ message RequeueItem {
   google.protobuf.Duration ttl = 2;
 }
 
-// RequeueResponse message returns the number of items that were requeued.
+// RequeueResponse contains the number of items that were requeued.
 message RequeueResponse {
   int32 ret = 1;
 }
 
-// DeleteSingleRequest message contains the ID of the item to delete.
+// DeleteSingleRequest deletes a single item by ID.
 message DeleteSingleRequest {
   uint64 id = 1;
 }
 
-// DeleteSingleResponse message returns true if the item was deleted.
+// DeleteSingleResponse indicates whether the item was deleted.
 message DeleteSingleResponse {
   bool deleted = 1;
 }
 
-// DeleteRequest message sends an array of item IDs to delete.
+// DeleteRequest deletes multiple items by their IDs.
 message DeleteRequest {
   repeated uint64 ids = 1;
 }
 
-// DeleteResponse message returns the number of items that were deleted.
+// DeleteResponse contains the number of items that were deleted.
 message DeleteResponse {
   int32 ret = 1;
 }
 
-// Following messages are management related only
+// Management messages
 
-// CreateQueueRequest message contains the data to create a new queue.
+// CreateQueueRequest contains the parameters to create a new queue.
 message CreateQueueRequest {
   // Non-empty name of the queue.
   string queue_name = 1;
@@ -265,18 +265,18 @@ message ResizeQueueRequest {
   uint32 max_size = 2;
 }
 
-// DeleteQueueRequest message contains the identification of the queue to delete.
+// DeleteQueueRequest identifies the queue to delete.
 message DeleteQueueRequest {
   // Name of the queue to delete.
   string queue_name = 1;
 }
 
-// ListQueuesResponse message contains an array of queues that are running on the server.
+// ListQueuesResponse contains all queues defined on the server.
 message ListQueuesResponse {
   repeated ListQueueItem queues = 1;
 }
 
-// ListQueueItem message contains the queue info.
+// ListQueueItem contains information about a single queue.
 message ListQueueItem {
   // Non-empty name of the queue.
   string queue_name = 1;
@@ -387,7 +387,7 @@ message StorageSetRequest {
   bytes key = 1;
   // Value to store.
   bytes value = 2;
-  // Optional delay duration before the item becomes available for locking. Set to 0 or omit for immediate availability.
+  // Optional time-to-live duration. The item expires after this duration. Omit or set to 0 for no expiration.
   optional google.protobuf.Duration ttl = 3;
 }
 

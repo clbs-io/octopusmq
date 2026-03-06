@@ -6,7 +6,7 @@ import "messages.proto";
 
 option go_package = "github.com/clbs-io/octopusmq/pkg/grpcstoragemgmtpb";
 
-// The service represents management operations on the storage.
+// StorageManagementService provides storage lifecycle management operations.
 service StorageManagementService {
   // CreateStorage creates a new key-value storage. If the storage already exists, the operation fails.
   rpc CreateStorage(io.clbs.octopusmq.protobuf.CreateStorageRequest) returns (google.protobuf.Empty);

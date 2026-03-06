@@ -5,8 +5,8 @@ import "messages.proto";
 
 option go_package = "github.com/clbs-io/octopusmq/pkg/grpcstoragepb";
 
-// The service represents main operations on the storages.
+// StorageService provides key-value storage operations over a bidirectional stream.
 service StorageService {
-  // Main command connection to the storage server. Inside this stream, all commands are sent.
+  // StorageConnect opens a bidirectional stream for sending storage commands and receiving responses.
   rpc StorageConnect(stream io.clbs.octopusmq.protobuf.StorageRequest) returns (stream io.clbs.octopusmq.protobuf.StorageResponse);
 }

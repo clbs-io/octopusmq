@@ -6,19 +6,18 @@ import "messages.proto";
 
 option go_package = "github.com/clbs-io/octopusmq/pkg/grpcmgmtpb";
 
-// The service represents management on the queues.
+// ManagementService provides queue lifecycle management operations.
 service ManagementService {
-  // CreateQueue creates a new queue. The named queue starts immediately.
-  // If the queue already exists, the operation fails.
+  // CreateQueue creates a new queue that starts immediately. Fails if the queue already exists.
   rpc CreateQueue(io.clbs.octopusmq.protobuf.CreateQueueRequest) returns (google.protobuf.Empty);
-  // ResizeQueue resizes the queue. If the queue does not exist, the operation fails. To shrink the queue, it has to be empty enought.
+  // ResizeQueue changes the maximum size of a queue. Fails if the queue does not exist. To shrink the queue, it must have enough free capacity.
   rpc ResizeQueue(io.clbs.octopusmq.protobuf.ResizeQueueRequest) returns (google.protobuf.Empty);
-  // DeleteQueue deletes the queue. If the queue does not exist, the operation fails.
+  // DeleteQueue deletes a queue. Fails if the queue does not exist.
   rpc DeleteQueue(io.clbs.octopusmq.protobuf.DeleteQueueRequest) returns (google.protobuf.Empty);
-  // ListQueues lists all queues defined on the server side.
+  // ListQueues returns all queues defined on the server.
   rpc ListQueues(google.protobuf.Empty) returns (io.clbs.octopusmq.protobuf.ListQueuesResponse);
-  // PauseQueue pauses the queue. If the queue does not exist, the operation fails. If the queue is already paused, the operation does nothing.
+  // PauseQueue pauses a queue. Fails if the queue does not exist. No-op if already paused.
   rpc PauseQueue(io.clbs.octopusmq.protobuf.PauseQueueRequest) returns (google.protobuf.Empty);
-  // ResumeQueue resumes the queue. If the queue does not exist, the operation fails. If the queue is already running, the operation does nothing.
+  // ResumeQueue resumes a paused queue. Fails if the queue does not exist. No-op if already running.
   rpc ResumeQueue(io.clbs.octopusmq.protobuf.ResumeQueueRequest) returns (google.protobuf.Empty);
 }

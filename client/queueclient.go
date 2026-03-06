@@ -13,15 +13,15 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-// make that shit thread safe
+// QueueClient is a thread-safe client for queue operations over a bidirectional stream.
 type QueueClient struct {
 	svcClient grpcpb.QueuesServiceClient
 	stream    grpc.BidiStreamingClient[pb.QueueRequest, pb.QueueResponse]
 	corrid    uint64
-	opts      []grpc.CallOption // like really?
+	opts      []grpc.CallOption
 	ctx       context.Context
 	qname     string
-	closed    bool // till no close called, try to open at any cost
+	closed    bool
 	logger    *zap.SugaredLogger
 	lock      sync.Mutex
 	errch     chan error
@@ -58,7 +58,7 @@ func (c *QueueClient) receiver() {
 			c.errch <- err
 			return
 		}
-		// put r according to correlation id to proper channel, this is damn slow, maybe integrate that into caller application instead of this mess?
+		// Dispatch response to the waiting caller by correlation ID.
 		c.lock.Lock()
 		if ch, ok := c.corrmap[r.CorrelationId]; ok {
 			delete(c.corrmap, r.CorrelationId)
@@ -75,7 +75,7 @@ func (c *QueueClient) receiver() {
 func (c *QueueClient) open() (err error) {
 	c.stream, err = c.svcClient.Connect(c.ctx, c.opts...)
 	if err != nil {
-		return // handle errors?
+		return
 	}
 
 	defer func() {
@@ -120,7 +120,7 @@ func (c *QueueClient) handlesend(cmd *pb.QueueRequest) (ch chan *pb.QueueRespons
 	}
 
 	c.corrid++
-	if _, ok := c.corrmap[c.corrid]; ok { // damn shouldnt happen, fucking so many map check, that shit couldnt be fast at all
+	if _, ok := c.corrmap[c.corrid]; ok {
 		return nil, status.Errorf(codes.Internal, "correlation id collision: %d", c.corrid)
 	}
 	cmd.CorrelationId = c.corrid
@@ -185,9 +185,9 @@ func (c *QueueClient) Close() (err error) {
 		return ErrQueueClientClosed
 	}
 	c.closed = true
-	err = c.stream.CloseSend() // closed with error... consider it just closed...
+	err = c.stream.CloseSend()
 
-	for _, ch := range c.corrmap { // just close it, damn i have to figure out a bit different way how to handle this... i just dont like it
+	for _, ch := range c.corrmap {
 		close(ch)
 	}
 	return
@@ -345,7 +345,6 @@ func (c *QueueClient) Delete(req *pb.DeleteRequest) (*pb.DeleteResponse, error) 
 	}
 }
 
-// async motherfuckers
 func (c *QueueClient) Pull(req *pb.PullRequest) (*pb.PullResponse, error) {
 	reqp, err := c.handleresp(&pb.QueueRequest{
 		Command: &pb.QueueRequest_Pull{

@@ -17,8 +17,8 @@ import (
 	"google.golang.org/grpc"
 )
 
-// Client is a simple wrapper of grpcpb.QueuesServiceClient, since grpcpb package is internal
-// When you are done with the client, you should call the Close() method to release the resources
+// Client manages a gRPC connection and provides access to queue and storage services.
+// Call Close() when done to release the underlying connection.
 type Client struct {
 	queueConnect grpcpb.QueuesServiceClient
 	mgmtClient   grpcmgmtpb.ManagementServiceClient
@@ -121,7 +121,6 @@ func (c *Client) ResumeQueue(ctx context.Context, req *pb.ResumeQueueRequest, op
 	return handledeferrors(err)
 }
 
-// storage
 func handledefsterrors(err error) error {
 	if err == nil {
 		return nil
@@ -153,7 +152,6 @@ func (c *Client) ListStorages(ctx context.Context, opts ...grpc.CallOption) (*pb
 	return ret, handledefsterrors(err)
 }
 
-// Queue Management
 func (c *Client) EnsureStorage(ctx context.Context, req *pb.CreateStorageRequest, opts ...grpc.CallOption) error {
 	_, err := c.stoClient.CreateStorage(ctx, req, opts...)
 

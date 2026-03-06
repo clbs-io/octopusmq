@@ -5,8 +5,8 @@ import "messages.proto";
 
 option go_package = "github.com/clbs-io/octopusmq/pkg/grpcpb";
 
-// The service represents main operations on the queues.
+// QueuesService provides queue operations over a bidirectional stream.
 service QueuesService {
-  // Main command connection to the queue server. Inside this stream, all commands are sent.
+  // Connect opens a bidirectional stream for sending queue commands and receiving responses.
   rpc Connect(stream io.clbs.octopusmq.protobuf.QueueRequest) returns (stream io.clbs.octopusmq.protobuf.QueueResponse);
 }
