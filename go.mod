@@ -10,7 +10,7 @@ require (
 require go.uber.org/multierr v1.11.0 // indirect
 
 require (
-	go.uber.org/zap v1.27.1
+	go.uber.org/zap v1.28.0
 	golang.org/x/net v0.52.0 // indirect
 	golang.org/x/sys v0.42.0 // indirect
 	golang.org/x/text v0.35.0 // indirect
