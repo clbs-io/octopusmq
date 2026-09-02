@@ -2,7 +2,6 @@ package client
 
 import (
 	"context"
-	"io"
 	"sync"
 
 	pb "github.com/clbs-io/octopusmq/api/protobuf"
@@ -20,23 +19,29 @@ type StorageClient struct {
 	corrid    uint64
 	opts      []grpc.CallOption
 	ctx       context.Context
+	cancel    context.CancelFunc
 	stoname   string
 	closed    bool
+	streamErr error
 	logger    *zap.SugaredLogger
 	lock      sync.Mutex
 	errch     chan error
 	corrmap   map[uint64]chan *pb.StorageResponse
 }
 
+// OpenStorage opens a bidirectional stream bound to the named storage.
+// The stream is derived from ctx; call Close to release it.
 func (c *Client) OpenStorage(ctx context.Context, name string, opts ...grpc.CallOption) (*StorageClient, error) {
 	// opening on demand, on every attempt
+	streamCtx, cancel := context.WithCancel(ctx)
 	ret := &StorageClient{
 		stoClient: c.stoConnect,
 		closed:    false,
 		stream:    nil,
 		corrid:    0,
 		opts:      opts,
-		ctx:       ctx,
+		ctx:       streamCtx,
+		cancel:    cancel,
 		stoname:   name,
 		logger:    c.logger,
 		errch:     make(chan error, 1),
@@ -44,6 +49,7 @@ func (c *Client) OpenStorage(ctx context.Context, name string, opts ...grpc.Call
 	}
 	err := ret.open() // no locks yet
 	if err != nil {
+		cancel()
 		return nil, err
 	}
 	go ret.receiver()
@@ -55,6 +61,7 @@ func (c *StorageClient) receiver() {
 	for {
 		r, err := c.stream.Recv()
 		if err != nil {
+			c.fail(err)
 			c.errch <- err
 			return
 		}
@@ -72,17 +79,31 @@ func (c *StorageClient) receiver() {
 	}
 }
 
+// fail records the error that terminated the stream and abandons every pending
+// caller. The callers are released by the closing of errch, which reports the
+// cause, so the abandoned channels are dropped rather than closed.
+func (c *StorageClient) fail(err error) {
+	c.lock.Lock()
+	defer c.lock.Unlock()
+	c.streamErr = err
+	clear(c.corrmap)
+}
+
+// terminalerr reports the error that terminated the stream.
+func (c *StorageClient) terminalerr() error {
+	c.lock.Lock()
+	defer c.lock.Unlock()
+	if c.streamErr == nil {
+		return status.Error(codes.Internal, "stream closed")
+	}
+	return reducestreamerr(c.streamErr)
+}
+
 func (c *StorageClient) open() (err error) {
 	c.stream, err = c.stoClient.StorageConnect(c.ctx, c.opts...)
 	if err != nil {
 		return
 	}
-
-	defer func() {
-		if err != nil {
-			_ = c.stream.CloseSend()
-		}
-	}()
 
 	// manually setup stream without receiver yet
 	err = c.stream.Send(&pb.StorageRequest{
@@ -118,6 +139,9 @@ func (c *StorageClient) handlesend(cmd *pb.StorageRequest, keepid bool) (ch chan
 	if c.closed {
 		return nil, ErrStorageClientClosed
 	}
+	if c.streamErr != nil {
+		return nil, reducestreamerr(c.streamErr)
+	}
 
 	var corrid uint64
 	if keepid {
@@ -133,19 +157,15 @@ func (c *StorageClient) handlesend(cmd *pb.StorageRequest, keepid bool) (ch chan
 	}
 	err = c.stream.Send(cmd)
 	if err != nil {
-		if st, ok := status.FromError(err); ok {
-			switch st.Code() {
-			case codes.DeadlineExceeded:
-			case codes.Canceled:
-				c.logger.Errorf("stream send error: %v, reduced to io.EOF", err)
-				return nil, io.EOF
-			}
+		if reduced := reducestreamerr(err); reduced != err {
+			c.logger.Errorf("stream send error: %v, reduced to io.EOF", err)
+			return nil, reduced
 		}
-	} else {
-		ch = make(chan *pb.StorageResponse)
-		c.corrmap[corrid] = ch
+		return nil, err
 	}
-	return
+	ch = make(chan *pb.StorageResponse)
+	c.corrmap[corrid] = ch
+	return ch, nil
 }
 
 func (c *StorageClient) handleresp(cmd *pb.StorageRequest, keepid bool) (*pb.StorageResponse, error) {
@@ -161,15 +181,11 @@ func (c *StorageClient) handleresp(cmd *pb.StorageRequest, keepid bool) (*pb.Sto
 		return reqp, nil
 	case err, ok := <-c.errch:
 		if !ok {
-			return nil, status.Error(codes.Internal, "already in error") // already error
+			return nil, c.terminalerr() // the failure was already reported to another caller
 		}
-		if st, ok := status.FromError(err); ok {
-			switch st.Code() {
-			case codes.DeadlineExceeded:
-			case codes.Canceled:
-				c.logger.Errorf("stream recv error: %v, reduced to io.EOF", err)
-				return nil, io.EOF
-			}
+		if reduced := reducestreamerr(err); reduced != err {
+			c.logger.Errorf("stream recv error: %v, reduced to io.EOF", err)
+			return nil, reduced
 		}
 		return nil, err
 	}
@@ -187,19 +203,23 @@ func decodestoragestatus(cc *pb.StorageResponse_Status) error {
 	return status.Errorf(codes.Internal, "command error: %s, status: %d", cc.Status.Message, cc.Status.Code)
 }
 
-func (c *StorageClient) Close() (err error) {
+func (c *StorageClient) Close() error {
 	c.lock.Lock()
-	defer c.lock.Unlock()
 	if c.closed {
+		c.lock.Unlock()
 		return ErrStorageClientClosed
 	}
 	c.closed = true
-	err = c.stream.CloseSend()
-
-	for _, ch := range c.corrmap {
+	err := c.stream.CloseSend()
+	// Release callers still waiting for a response. The entries must leave the map
+	// so that a late response cannot make the receiver send on a closed channel.
+	for id, ch := range c.corrmap {
+		delete(c.corrmap, id)
 		close(ch)
 	}
-	return
+	c.lock.Unlock()
+	c.cancel()
+	return err
 }
 
 func (c *StorageClient) Get(req *pb.StorageGetRequest) (*pb.StorageDataResponse, error) {
@@ -246,7 +266,7 @@ func (c *StorageClient) GetKeys(req *pb.StorageGetKeysRequest) ([][]byte, error)
 		}
 		reqp, err = c.handleresp(&pb.StorageRequest{
 			CorrelationId: reqp.CorrelationId,
-			Command:       &pb.StorageRequest_GetKeysNext{},
+			Command:       &pb.StorageRequest_GetKeysNext{GetKeysNext: &pb.StorageGetKeysNextRequest{}},
 		}, true)
 		if err != nil {
 			return nil, err

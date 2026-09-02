@@ -2,7 +2,6 @@ package client
 
 import (
 	"context"
-	"io"
 	"sync"
 
 	pb "github.com/clbs-io/octopusmq/api/protobuf"
@@ -20,23 +19,29 @@ type QueueClient struct {
 	corrid    uint64
 	opts      []grpc.CallOption
 	ctx       context.Context
+	cancel    context.CancelFunc
 	qname     string
 	closed    bool
+	streamErr error
 	logger    *zap.SugaredLogger
 	lock      sync.Mutex
 	errch     chan error
 	corrmap   map[uint64]chan *pb.QueueResponse
 }
 
+// OpenQueue opens a bidirectional stream bound to the named queue.
+// The stream is derived from ctx; call Close to release it.
 func (c *Client) OpenQueue(ctx context.Context, name string, opts ...grpc.CallOption) (*QueueClient, error) {
 	// opening on demand, on every attempt
+	streamCtx, cancel := context.WithCancel(ctx)
 	ret := &QueueClient{
 		svcClient: c.queueConnect,
 		closed:    false,
 		stream:    nil,
 		corrid:    0,
 		opts:      opts,
-		ctx:       ctx,
+		ctx:       streamCtx,
+		cancel:    cancel,
 		qname:     name,
 		logger:    c.logger,
 		errch:     make(chan error, 1),
@@ -44,6 +49,7 @@ func (c *Client) OpenQueue(ctx context.Context, name string, opts ...grpc.CallOp
 	}
 	err := ret.open() // no locks yet
 	if err != nil {
+		cancel()
 		return nil, err
 	}
 	go ret.receiver()
@@ -55,6 +61,7 @@ func (c *QueueClient) receiver() {
 	for {
 		r, err := c.stream.Recv()
 		if err != nil {
+			c.fail(err)
 			c.errch <- err
 			return
 		}
@@ -72,17 +79,31 @@ func (c *QueueClient) receiver() {
 	}
 }
 
+// fail records the error that terminated the stream and abandons every pending
+// caller. The callers are released by the closing of errch, which reports the
+// cause, so the abandoned channels are dropped rather than closed.
+func (c *QueueClient) fail(err error) {
+	c.lock.Lock()
+	defer c.lock.Unlock()
+	c.streamErr = err
+	clear(c.corrmap)
+}
+
+// terminalerr reports the error that terminated the stream.
+func (c *QueueClient) terminalerr() error {
+	c.lock.Lock()
+	defer c.lock.Unlock()
+	if c.streamErr == nil {
+		return status.Error(codes.Internal, "stream closed")
+	}
+	return reducestreamerr(c.streamErr)
+}
+
 func (c *QueueClient) open() (err error) {
 	c.stream, err = c.svcClient.Connect(c.ctx, c.opts...)
 	if err != nil {
 		return
 	}
-
-	defer func() {
-		if err != nil {
-			_ = c.stream.CloseSend()
-		}
-	}()
 
 	// manually setup stream without receiver yet
 	err = c.stream.Send(&pb.QueueRequest{
@@ -118,6 +139,9 @@ func (c *QueueClient) handlesend(cmd *pb.QueueRequest) (ch chan *pb.QueueRespons
 	if c.closed {
 		return nil, ErrQueueClientClosed
 	}
+	if c.streamErr != nil {
+		return nil, reducestreamerr(c.streamErr)
+	}
 
 	c.corrid++
 	if _, ok := c.corrmap[c.corrid]; ok {
@@ -126,19 +150,15 @@ func (c *QueueClient) handlesend(cmd *pb.QueueRequest) (ch chan *pb.QueueRespons
 	cmd.CorrelationId = c.corrid
 	err = c.stream.Send(cmd)
 	if err != nil {
-		if st, ok := status.FromError(err); ok {
-			switch st.Code() {
-			case codes.DeadlineExceeded:
-			case codes.Canceled:
-				c.logger.Errorf("stream send error: %v, reduced to io.EOF", err)
-				return nil, io.EOF
-			}
+		if reduced := reducestreamerr(err); reduced != err {
+			c.logger.Errorf("stream send error: %v, reduced to io.EOF", err)
+			return nil, reduced
 		}
-	} else {
-		ch = make(chan *pb.QueueResponse)
-		c.corrmap[c.corrid] = ch
+		return nil, err
 	}
-	return
+	ch = make(chan *pb.QueueResponse)
+	c.corrmap[c.corrid] = ch
+	return ch, nil
 }
 
 func (c *QueueClient) handleresp(cmd *pb.QueueRequest) (*pb.QueueResponse, error) {
@@ -154,15 +174,11 @@ func (c *QueueClient) handleresp(cmd *pb.QueueRequest) (*pb.QueueResponse, error
 		return reqp, nil
 	case err, ok := <-c.errch:
 		if !ok {
-			return nil, status.Error(codes.Internal, "already in error") // already error
+			return nil, c.terminalerr() // the failure was already reported to another caller
 		}
-		if st, ok := status.FromError(err); ok {
-			switch st.Code() {
-			case codes.DeadlineExceeded:
-			case codes.Canceled:
-				c.logger.Errorf("stream recv error: %v, reduced to io.EOF", err)
-				return nil, io.EOF
-			}
+		if reduced := reducestreamerr(err); reduced != err {
+			c.logger.Errorf("stream recv error: %v, reduced to io.EOF", err)
+			return nil, reduced
 		}
 		return nil, err
 	}
@@ -174,23 +190,29 @@ func decodestatus(cc *pb.QueueResponse_Status) error {
 		return ErrQueueTimeout
 	case pb.StatusCode_STATUS_CODE_QUEUE_NOT_FOUND:
 		return ErrQueueNotFound
+	case pb.StatusCode_STATUS_CODE_QUEUE_PAUSED:
+		return ErrQueuePaused
 	}
 	return status.Errorf(codes.Internal, "command error: %s, status: %d", cc.Status.Message, cc.Status.Code)
 }
 
-func (c *QueueClient) Close() (err error) {
+func (c *QueueClient) Close() error {
 	c.lock.Lock()
-	defer c.lock.Unlock()
 	if c.closed {
+		c.lock.Unlock()
 		return ErrQueueClientClosed
 	}
 	c.closed = true
-	err = c.stream.CloseSend()
-
-	for _, ch := range c.corrmap {
+	err := c.stream.CloseSend()
+	// Release callers still waiting for a response. The entries must leave the map
+	// so that a late response cannot make the receiver send on a closed channel.
+	for id, ch := range c.corrmap {
+		delete(c.corrmap, id)
 		close(ch)
 	}
-	return
+	c.lock.Unlock()
+	c.cancel()
+	return err
 }
 
 func (c *QueueClient) Enqueue(req *pb.EnqueueRequest) (*pb.EnqueueResponse, error) {

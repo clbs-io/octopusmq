@@ -2,6 +2,7 @@ package client
 
 import (
 	"context"
+	"errors"
 
 	"go.uber.org/zap"
 	"google.golang.org/grpc/codes"
@@ -55,24 +56,6 @@ func (c *Client) Close() error {
 	return c.grpcClient.Close()
 }
 
-// Queue Management
-func (c *Client) EnsureQueue(ctx context.Context, req *pb.CreateQueueRequest, opts ...grpc.CallOption) error {
-	_, err := c.mgmtClient.CreateQueue(ctx, req, opts...)
-
-	if err == nil {
-		return nil
-	}
-
-	st := status.Convert(err)
-
-	// suppress the error and return
-	if st.Code() == codes.AlreadyExists {
-		return nil
-	}
-
-	return err
-}
-
 func handledeferrors(err error) error {
 	if err == nil {
 		return nil
@@ -94,6 +77,15 @@ func handledeferrors(err error) error {
 func (c *Client) CreateQueue(ctx context.Context, req *pb.CreateQueueRequest, opts ...grpc.CallOption) error {
 	_, err := c.mgmtClient.CreateQueue(ctx, req, opts...)
 	return handledeferrors(err)
+}
+
+// EnsureQueue creates the queue and reports success when it already exists.
+func (c *Client) EnsureQueue(ctx context.Context, req *pb.CreateQueueRequest, opts ...grpc.CallOption) error {
+	err := c.CreateQueue(ctx, req, opts...)
+	if errors.Is(err, ErrQueueAlreadyExists) {
+		return nil
+	}
+	return err
 }
 
 func (c *Client) ResizeQueue(ctx context.Context, req *pb.ResizeQueueRequest, opts ...grpc.CallOption) error {
@@ -152,19 +144,11 @@ func (c *Client) ListStorages(ctx context.Context, opts ...grpc.CallOption) (*pb
 	return ret, handledefsterrors(err)
 }
 
+// EnsureStorage creates the storage and reports success when it already exists.
 func (c *Client) EnsureStorage(ctx context.Context, req *pb.CreateStorageRequest, opts ...grpc.CallOption) error {
-	_, err := c.stoClient.CreateStorage(ctx, req, opts...)
-
-	if err == nil {
+	err := c.CreateStorage(ctx, req, opts...)
+	if errors.Is(err, ErrStorageAlreadyExists) {
 		return nil
 	}
-
-	st := status.Convert(err)
-
-	// suppress the error and return
-	if st.Code() == codes.AlreadyExists {
-		return nil
-	}
-
 	return err
 }
