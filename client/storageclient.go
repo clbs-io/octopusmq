@@ -61,8 +61,9 @@ func (c *StorageClient) receiver() {
 	for {
 		r, err := c.stream.Recv()
 		if err != nil {
-			c.fail(err)
-			c.errch <- err
+			broken := &brokenStreamError{cause: err}
+			c.fail(broken)
+			c.errch <- broken
 			return
 		}
 		// Dispatch response to the waiting caller by correlation ID.
@@ -96,7 +97,7 @@ func (c *StorageClient) terminalerr() error {
 	if c.streamErr == nil {
 		return status.Error(codes.Internal, "stream closed")
 	}
-	return reducestreamerr(c.streamErr)
+	return c.streamErr
 }
 
 func (c *StorageClient) open() (err error) {
@@ -140,7 +141,7 @@ func (c *StorageClient) handlesend(cmd *pb.StorageRequest, keepid bool) (ch chan
 		return nil, ErrStorageClientClosed
 	}
 	if c.streamErr != nil {
-		return nil, reducestreamerr(c.streamErr)
+		return nil, c.streamErr
 	}
 
 	var corrid uint64
@@ -157,11 +158,7 @@ func (c *StorageClient) handlesend(cmd *pb.StorageRequest, keepid bool) (ch chan
 	}
 	err = c.stream.Send(cmd)
 	if err != nil {
-		if reduced := reducestreamerr(err); reduced != err {
-			c.logger.Errorf("stream send error: %v, reduced to io.EOF", err)
-			return nil, reduced
-		}
-		return nil, err
+		return nil, &brokenStreamError{cause: err}
 	}
 	ch = make(chan *pb.StorageResponse)
 	c.corrmap[corrid] = ch
@@ -182,10 +179,6 @@ func (c *StorageClient) handleresp(cmd *pb.StorageRequest, keepid bool) (*pb.Sto
 	case err, ok := <-c.errch:
 		if !ok {
 			return nil, c.terminalerr() // the failure was already reported to another caller
-		}
-		if reduced := reducestreamerr(err); reduced != err {
-			c.logger.Errorf("stream recv error: %v, reduced to io.EOF", err)
-			return nil, reduced
 		}
 		return nil, err
 	}

@@ -3,6 +3,7 @@ package client
 import (
 	"errors"
 	"io"
+	"strings"
 	"testing"
 
 	pb "github.com/clbs-io/octopusmq/api/protobuf"
@@ -12,11 +13,13 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-// fakeQueueStream is a bidirectional stream driven by the test.
+// fakeQueueStream is a bidirectional stream driven by the test. Closing recv
+// ends the stream with err, or with io.EOF when err is nil.
 type fakeQueueStream struct {
 	grpc.ClientStream
 	sent chan *pb.QueueRequest
 	recv chan *pb.QueueResponse
+	err  error
 }
 
 func (s *fakeQueueStream) Send(req *pb.QueueRequest) error {
@@ -27,6 +30,9 @@ func (s *fakeQueueStream) Send(req *pb.QueueRequest) error {
 func (s *fakeQueueStream) Recv() (*pb.QueueResponse, error) {
 	r, ok := <-s.recv
 	if !ok {
+		if s.err != nil {
+			return nil, s.err
+		}
 		return nil, io.EOF
 	}
 	return r, nil
@@ -34,11 +40,13 @@ func (s *fakeQueueStream) Recv() (*pb.QueueResponse, error) {
 
 func (s *fakeQueueStream) CloseSend() error { return nil }
 
-// fakeStorageStream is a bidirectional stream driven by the test.
+// fakeStorageStream is a bidirectional stream driven by the test. Closing recv
+// ends the stream with err, or with io.EOF when err is nil.
 type fakeStorageStream struct {
 	grpc.ClientStream
 	sent chan *pb.StorageRequest
 	recv chan *pb.StorageResponse
+	err  error
 }
 
 func (s *fakeStorageStream) Send(req *pb.StorageRequest) error {
@@ -49,6 +57,9 @@ func (s *fakeStorageStream) Send(req *pb.StorageRequest) error {
 func (s *fakeStorageStream) Recv() (*pb.StorageResponse, error) {
 	r, ok := <-s.recv
 	if !ok {
+		if s.err != nil {
+			return nil, s.err
+		}
 		return nil, io.EOF
 	}
 	return r, nil
@@ -91,8 +102,8 @@ func TestQueueClientLateResponseAfterClose(t *testing.T) {
 	}
 	close(stream.recv)
 
-	if err := <-c.errch; !errors.Is(err, io.EOF) {
-		t.Fatalf("receiver error = %v, want io.EOF", err)
+	if err := <-c.errch; !errors.Is(err, ErrStreamBroken) {
+		t.Fatalf("receiver error = %v, want ErrStreamBroken", err)
 	}
 	if err := c.Close(); !errors.Is(err, ErrQueueClientClosed) {
 		t.Fatalf("second close = %v, want ErrQueueClientClosed", err)
@@ -134,58 +145,102 @@ func TestStorageClientLateResponseAfterClose(t *testing.T) {
 	}
 	close(stream.recv)
 
-	if err := <-c.errch; !errors.Is(err, io.EOF) {
-		t.Fatalf("receiver error = %v, want io.EOF", err)
+	if err := <-c.errch; !errors.Is(err, ErrStreamBroken) {
+		t.Fatalf("receiver error = %v, want ErrStreamBroken", err)
 	}
 }
 
-// Callers waiting on a stream that dies get the cause, not a generic error.
-func TestQueueClientReportsStreamFailure(t *testing.T) {
-	stream := &fakeQueueStream{
-		sent: make(chan *pb.QueueRequest, 1),
-		recv: make(chan *pb.QueueResponse),
-	}
-	c := &QueueClient{
-		stream:  stream,
-		cancel:  func() {},
-		logger:  zap.NewNop().Sugar(),
-		errch:   make(chan error, 1),
-		corrmap: make(map[uint64]chan *pb.QueueResponse),
-	}
-	go c.receiver()
+// streamEndings are the ways a stream ends underneath a client. The broker
+// losing raft leadership stops its gRPC server, which ends every stream with
+// Unavailable.
+var streamEndings = []struct {
+	name  string
+	cause error
+}{
+	{"server closed the stream", io.EOF},
+	{"leader stepped down", status.Error(codes.Unavailable, `closing transport due to: connection error: `+
+		`desc = "error reading from server: connection reset by peer", `+
+		`received prior goaway: code: NO_ERROR, debug data: "graceful_stop"`)},
+	{"deadline exceeded", status.Error(codes.DeadlineExceeded, "context deadline exceeded")},
+	{"stream reset", status.Error(codes.Internal, "stream terminated by RST_STREAM")},
+}
 
-	done := make(chan error, 1)
-	go func() { done <- c.Noop() }()
-
-	<-stream.sent
-	close(stream.recv) // the stream dies with io.EOF
-
-	if err := <-done; !errors.Is(err, io.EOF) {
-		t.Fatalf("pending caller error = %v, want io.EOF", err)
+// checkBrokenStream verifies that err reports a broken stream, names what
+// ended it, and cannot be mistaken for the result of the operation itself.
+func checkBrokenStream(t *testing.T, who string, err, cause error) {
+	t.Helper()
+	if !errors.Is(err, ErrStreamBroken) {
+		t.Fatalf("%s error = %v, want ErrStreamBroken", who, err)
 	}
-	// Later callers learn the same cause instead of blocking or getting a
-	// placeholder error.
-	if err := c.Noop(); !errors.Is(err, io.EOF) {
-		t.Fatalf("subsequent caller error = %v, want io.EOF", err)
+	if !strings.Contains(err.Error(), cause.Error()) {
+		t.Fatalf("%s error = %q, want it to name the cause %q", who, err, cause)
+	}
+	if code := status.Code(err); code != codes.Unavailable {
+		t.Fatalf("%s error code = %v, want Unavailable", who, code)
+	}
+	if errors.Is(err, ErrQueueTimeout) || errors.Is(err, ErrStorageTimeout) {
+		t.Fatalf("%s error = %v reads as an operation timeout", who, err)
 	}
 }
 
-func TestReduceStreamErr(t *testing.T) {
-	other := status.Error(codes.Internal, "boom")
-	tests := []struct {
-		name string
-		err  error
-		want error
-	}{
-		{"canceled", status.Error(codes.Canceled, "canceled"), io.EOF},
-		{"deadline exceeded", status.Error(codes.DeadlineExceeded, "deadline"), io.EOF},
-		{"other", other, other},
-	}
-	for _, tt := range tests {
+// Every caller of a queue client whose stream ended, waiting or arriving later,
+// learns that the stream is broken and why.
+func TestQueueClientReportsBrokenStream(t *testing.T) {
+	for _, tt := range streamEndings {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := reducestreamerr(tt.err); got != tt.want {
-				t.Fatalf("reducestreamerr(%v) = %v, want %v", tt.err, got, tt.want)
+			stream := &fakeQueueStream{
+				sent: make(chan *pb.QueueRequest, 1),
+				recv: make(chan *pb.QueueResponse),
+				err:  tt.cause,
 			}
+			c := &QueueClient{
+				stream:  stream,
+				cancel:  func() {},
+				logger:  zap.NewNop().Sugar(),
+				errch:   make(chan error, 1),
+				corrmap: make(map[uint64]chan *pb.QueueResponse),
+			}
+			go c.receiver()
+
+			done := make(chan error, 1)
+			go func() { done <- c.Noop() }()
+
+			<-stream.sent
+			close(stream.recv)
+
+			checkBrokenStream(t, "pending caller", <-done, tt.cause)
+			checkBrokenStream(t, "subsequent caller", c.Noop(), tt.cause)
+		})
+	}
+}
+
+// Every caller of a storage client whose stream ended, waiting or arriving
+// later, learns that the stream is broken and why.
+func TestStorageClientReportsBrokenStream(t *testing.T) {
+	for _, tt := range streamEndings {
+		t.Run(tt.name, func(t *testing.T) {
+			stream := &fakeStorageStream{
+				sent: make(chan *pb.StorageRequest, 1),
+				recv: make(chan *pb.StorageResponse),
+				err:  tt.cause,
+			}
+			c := &StorageClient{
+				stream:  stream,
+				cancel:  func() {},
+				logger:  zap.NewNop().Sugar(),
+				errch:   make(chan error, 1),
+				corrmap: make(map[uint64]chan *pb.StorageResponse),
+			}
+			go c.receiver()
+
+			done := make(chan error, 1)
+			go func() { done <- c.Noop() }()
+
+			<-stream.sent
+			close(stream.recv)
+
+			checkBrokenStream(t, "pending caller", <-done, tt.cause)
+			checkBrokenStream(t, "subsequent caller", c.Noop(), tt.cause)
 		})
 	}
 }

@@ -1,8 +1,6 @@
 package client
 
 import (
-	"io"
-
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
@@ -19,17 +17,31 @@ var (
 	ErrStorageClientClosed  = status.Error(codes.Canceled, "storage client closed")
 	ErrStorageTimeout       = status.Error(codes.DeadlineExceeded, "storage operation timeout")
 	ErrStorageKeyNotFound   = status.Error(codes.NotFound, "storage key not found")
+
+	// ErrStreamBroken matches the error of every operation on a QueueClient or
+	// StorageClient whose stream has ended. Such a client never recovers: close
+	// it and open a new one.
+	ErrStreamBroken = status.Error(codes.Unavailable, "stream broken")
 )
 
-// reducestreamerr maps a terminal transport error of a bidirectional stream onto
-// io.EOF, so that callers can treat a broken stream uniformly regardless of how
-// it was torn down. Any other error is returned unchanged.
-func reducestreamerr(err error) error {
-	if st, ok := status.FromError(err); ok {
-		switch st.Code() {
-		case codes.Canceled, codes.DeadlineExceeded:
-			return io.EOF
-		}
-	}
-	return err
+// brokenStreamError is what a client reports once its stream has ended. Every
+// error Send or Recv returns ends a gRPC stream, so the client wraps each of them
+// in it. The message names the error that ended the stream, but the status is
+// always Unavailable: a stream that ended on a missed deadline must not read as
+// an operation that timed out, and one the broker tore down while losing raft
+// leadership must not read as a paused queue.
+type brokenStreamError struct {
+	cause error
+}
+
+func (e *brokenStreamError) Error() string {
+	return "stream broken: " + e.cause.Error()
+}
+
+func (e *brokenStreamError) GRPCStatus() *status.Status {
+	return status.New(codes.Unavailable, e.Error())
+}
+
+func (e *brokenStreamError) Is(target error) bool {
+	return target == ErrStreamBroken
 }

@@ -61,8 +61,9 @@ func (c *QueueClient) receiver() {
 	for {
 		r, err := c.stream.Recv()
 		if err != nil {
-			c.fail(err)
-			c.errch <- err
+			broken := &brokenStreamError{cause: err}
+			c.fail(broken)
+			c.errch <- broken
 			return
 		}
 		// Dispatch response to the waiting caller by correlation ID.
@@ -96,7 +97,7 @@ func (c *QueueClient) terminalerr() error {
 	if c.streamErr == nil {
 		return status.Error(codes.Internal, "stream closed")
 	}
-	return reducestreamerr(c.streamErr)
+	return c.streamErr
 }
 
 func (c *QueueClient) open() (err error) {
@@ -140,7 +141,7 @@ func (c *QueueClient) handlesend(cmd *pb.QueueRequest) (ch chan *pb.QueueRespons
 		return nil, ErrQueueClientClosed
 	}
 	if c.streamErr != nil {
-		return nil, reducestreamerr(c.streamErr)
+		return nil, c.streamErr
 	}
 
 	c.corrid++
@@ -150,11 +151,7 @@ func (c *QueueClient) handlesend(cmd *pb.QueueRequest) (ch chan *pb.QueueRespons
 	cmd.CorrelationId = c.corrid
 	err = c.stream.Send(cmd)
 	if err != nil {
-		if reduced := reducestreamerr(err); reduced != err {
-			c.logger.Errorf("stream send error: %v, reduced to io.EOF", err)
-			return nil, reduced
-		}
-		return nil, err
+		return nil, &brokenStreamError{cause: err}
 	}
 	ch = make(chan *pb.QueueResponse)
 	c.corrmap[c.corrid] = ch
@@ -175,10 +172,6 @@ func (c *QueueClient) handleresp(cmd *pb.QueueRequest) (*pb.QueueResponse, error
 	case err, ok := <-c.errch:
 		if !ok {
 			return nil, c.terminalerr() // the failure was already reported to another caller
-		}
-		if reduced := reducestreamerr(err); reduced != err {
-			c.logger.Errorf("stream recv error: %v, reduced to io.EOF", err)
-			return nil, reduced
 		}
 		return nil, err
 	}
