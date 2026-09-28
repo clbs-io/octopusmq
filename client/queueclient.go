@@ -3,6 +3,7 @@ package client
 import (
 	"context"
 	"sync"
+	"uuid"
 
 	pb "github.com/clbs-io/octopusmq/api/protobuf"
 	"github.com/clbs-io/octopusmq/pkg/grpcpb"
@@ -11,6 +12,15 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
+
+// NewRequestID returns a new idempotency key for use as EnqueueRequest.RequestId
+// or BatchEnqueueRequest.RequestId. Reuse the same id when retrying a request
+// after an error, including a stream error, so the server can recognize the
+// retry within its dedup window instead of enqueuing the item again.
+func NewRequestID() []byte {
+	id := uuid.NewV7()
+	return id[:]
+}
 
 // QueueClient is a thread-safe client for queue operations over a bidirectional stream.
 type QueueClient struct {

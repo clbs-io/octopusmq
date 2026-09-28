@@ -1,7 +1,7 @@
 .PHONY: codegen
 codegen: generate-protobuf generate-grpc
 
-.PHONY: genenerate-protobuf
+.PHONY: generate-protobuf
 generate-protobuf:
 	./hack/generate-protobuf.sh
 

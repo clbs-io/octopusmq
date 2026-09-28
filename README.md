@@ -211,6 +211,22 @@ err := qClient.CommitSingle(ctx, itemID)
 err := qClient.Commit(ctx, itemIDs)
 ```
 
+### Retry-Safe Enqueue
+
+`EnqueueRequest` and `BatchEnqueueRequest` accept an optional `RequestId` (at most
+64 bytes). Generate one with `client.NewRequestID()` and reuse the same id when
+retrying after an error, including a stream error:
+
+```go
+req := &pb.EnqueueRequest{Item: item, RequestId: client.NewRequestID()}
+```
+
+On a cluster at feature level 2 or higher, the server returns the item id(s) it
+recorded for that request id within its dedup window instead of enqueuing the
+item again. Servers below that feature level ignore `RequestId`. Call
+`qClient.GetInfo()` and check `GetQueueInfoResponse.FeatureLevel` to find the
+cluster's current feature level; `0` means a server that predates feature levels.
+
 ### Requeue Messages
 
 ```go

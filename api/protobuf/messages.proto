@@ -127,12 +127,20 @@ message GetQueueInfoResponse {
   uint32 active = 3;
   // Number of priority levels in the queue.
   uint32 priorities = 4;
+  // Feature level of the cluster. A value of 0 means a server that predates
+  // feature levels.
+  uint32 feature_level = 5;
 }
 
 // EnqueueRequest contains the item to enqueue and an optional timeout for the operation.
 message EnqueueRequest {
   InputItem item = 1;
   google.protobuf.Duration timeout = 2;
+  // Optional idempotency key for this request, at most 64 bytes. On a cluster
+  // at feature level 2 or higher, the server returns the item id it recorded
+  // for this request id within its dedup window instead of enqueuing again.
+  // Servers below that feature level ignore it.
+  bytes request_id = 3;
 }
 
 // BatchEnqueueRequest enqueues multiple items in a single operation.
@@ -141,6 +149,11 @@ message BatchEnqueueRequest {
   repeated InputItem items = 1;
   // Timeout duration for the operation.
   google.protobuf.Duration timeout = 2;
+  // Optional idempotency key for this request, at most 64 bytes. On a cluster
+  // at feature level 2 or higher, the server returns the item ids it recorded
+  // for this request id within its dedup window instead of enqueuing again.
+  // Servers below that feature level ignore it.
+  bytes request_id = 3;
 }
 
 // EnqueueResponse contains the server-assigned ID of the enqueued item.
