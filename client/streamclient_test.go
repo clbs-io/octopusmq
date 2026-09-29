@@ -1,6 +1,7 @@
 package client
 
 import (
+	"context"
 	"errors"
 	"io"
 	"strings"
@@ -67,6 +68,23 @@ func (s *fakeStorageStream) Recv() (*pb.StorageResponse, error) {
 
 func (s *fakeStorageStream) CloseSend() error { return nil }
 
+// newTestQueueClient is a client on stream that cannot reopen it, the way a
+// client behaves once the context it was opened with has ended.
+func newTestQueueClient(stream grpc.BidiStreamingClient[pb.QueueRequest, pb.QueueResponse]) *QueueClient {
+	c := &QueueClient{ctx: context.Background(), cancel: func() {}, logger: zap.NewNop().Sugar()}
+	c.cur = newQueueStream(stream, func() {})
+	go c.receive(c.cur)
+	return c
+}
+
+// newTestStorageClient is the StorageClient counterpart of newTestQueueClient.
+func newTestStorageClient(stream grpc.BidiStreamingClient[pb.StorageRequest, pb.StorageResponse]) *StorageClient {
+	c := &StorageClient{ctx: context.Background(), cancel: func() {}, logger: zap.NewNop().Sugar()}
+	c.cur = newStorageStream(stream, func() {})
+	go c.receive(c.cur)
+	return c
+}
+
 // A response arriving after Close must be discarded instead of being delivered
 // to a channel the closing already released.
 func TestQueueClientLateResponseAfterClose(t *testing.T) {
@@ -74,14 +92,7 @@ func TestQueueClientLateResponseAfterClose(t *testing.T) {
 		sent: make(chan *pb.QueueRequest, 1),
 		recv: make(chan *pb.QueueResponse, 1),
 	}
-	c := &QueueClient{
-		stream:  stream,
-		cancel:  func() {},
-		logger:  zap.NewNop().Sugar(),
-		errch:   make(chan error, 1),
-		corrmap: make(map[uint64]chan *pb.QueueResponse),
-	}
-	go c.receiver()
+	c := newTestQueueClient(stream)
 
 	done := make(chan error, 1)
 	go func() { done <- c.Noop() }()
@@ -102,7 +113,7 @@ func TestQueueClientLateResponseAfterClose(t *testing.T) {
 	}
 	close(stream.recv)
 
-	if err := <-c.errch; !errors.Is(err, ErrStreamBroken) {
+	if err := <-c.cur.errch; !errors.Is(err, ErrStreamBroken) {
 		t.Fatalf("receiver error = %v, want ErrStreamBroken", err)
 	}
 	if err := c.Close(); !errors.Is(err, ErrQueueClientClosed) {
@@ -117,14 +128,7 @@ func TestStorageClientLateResponseAfterClose(t *testing.T) {
 		sent: make(chan *pb.StorageRequest, 1),
 		recv: make(chan *pb.StorageResponse, 1),
 	}
-	c := &StorageClient{
-		stream:  stream,
-		cancel:  func() {},
-		logger:  zap.NewNop().Sugar(),
-		errch:   make(chan error, 1),
-		corrmap: make(map[uint64]chan *pb.StorageResponse),
-	}
-	go c.receiver()
+	c := newTestStorageClient(stream)
 
 	done := make(chan error, 1)
 	go func() { done <- c.Noop() }()
@@ -145,7 +149,7 @@ func TestStorageClientLateResponseAfterClose(t *testing.T) {
 	}
 	close(stream.recv)
 
-	if err := <-c.errch; !errors.Is(err, ErrStreamBroken) {
+	if err := <-c.cur.errch; !errors.Is(err, ErrStreamBroken) {
 		t.Fatalf("receiver error = %v, want ErrStreamBroken", err)
 	}
 }
@@ -193,14 +197,7 @@ func TestQueueClientReportsBrokenStream(t *testing.T) {
 				recv: make(chan *pb.QueueResponse),
 				err:  tt.cause,
 			}
-			c := &QueueClient{
-				stream:  stream,
-				cancel:  func() {},
-				logger:  zap.NewNop().Sugar(),
-				errch:   make(chan error, 1),
-				corrmap: make(map[uint64]chan *pb.QueueResponse),
-			}
-			go c.receiver()
+			c := newTestQueueClient(stream)
 
 			done := make(chan error, 1)
 			go func() { done <- c.Noop() }()
@@ -224,14 +221,7 @@ func TestStorageClientReportsBrokenStream(t *testing.T) {
 				recv: make(chan *pb.StorageResponse),
 				err:  tt.cause,
 			}
-			c := &StorageClient{
-				stream:  stream,
-				cancel:  func() {},
-				logger:  zap.NewNop().Sugar(),
-				errch:   make(chan error, 1),
-				corrmap: make(map[uint64]chan *pb.StorageResponse),
-			}
-			go c.receiver()
+			c := newTestStorageClient(stream)
 
 			done := make(chan error, 1)
 			go func() { done <- c.Noop() }()

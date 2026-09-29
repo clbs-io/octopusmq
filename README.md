@@ -286,16 +286,17 @@ err := sClient.DeleteKey(ctx, key)
 
 ## Connection Management
 
-Both clients support automatic reconnection and leader discovery:
+A `QueueClient` or `StorageClient` opened with `OpenQueue` or `OpenStorage` rides out broker failovers on its own. When its stream breaks, or the broker answers `STATUS_CODE_LEADER_SWITCH` because it no longer leads, the client waits (100 ms, doubling up to 2 s), reopens the stream through its `Client` connection and repeats the operation, until the context the client was opened with ends. Point the `Client` at an address that always reaches the current leader, such as the chart's `<release>-leader` service.
 
 ```go
-client, err := client.NewQueueClient("server:4123", "queue-name")
-// Client automatically handles:
-// - Connection establishment
-// - Stream management
-// - Correlation ID tracking
-// - Error handling
+qc, err := c.OpenQueue(ctx, "queue-name") // ctx bounds how long operations may stall
+resp, err := qc.BatchEnqueue(req)         // repeated across a failover, applied once
 ```
+
+- An enqueue without a `request_id` gets one before the first attempt, so a repeated enqueue is applied once by a broker at feature level 2. Below it, a repeat may enqueue a duplicate.
+- Items pulled on a stream that broke are redelivered once their lease expires; from feature level 2 they can be committed, requeued or deleted by id on the new stream.
+- `GetKeys` starts its listing again on the new stream.
+- Once the context ends, the operation fails with `ErrLeaderSwitch` or `ErrStreamBroken`, both `codes.Unavailable`.
 
 ## Status Codes
 

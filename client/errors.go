@@ -18,10 +18,18 @@ var (
 	ErrStorageTimeout       = status.Error(codes.DeadlineExceeded, "storage operation timeout")
 	ErrStorageKeyNotFound   = status.Error(codes.NotFound, "storage key not found")
 
-	// ErrStreamBroken matches the error of every operation on a QueueClient or
-	// StorageClient whose stream has ended. Such a client never recovers: close
-	// it and open a new one.
+	// ErrStreamBroken matches the error of an operation whose stream ended. A
+	// QueueClient or StorageClient opened by a Client reconnects and repeats the
+	// operation by itself, so the error reaches the caller only once the context
+	// the client was opened with ends first.
 	ErrStreamBroken = status.Error(codes.Unavailable, "stream broken")
+
+	// ErrLeaderSwitch matches the error of an operation the broker refused
+	// because it no longer leads the cluster. A QueueClient or StorageClient
+	// opened by a Client reconnects to the new leader and repeats the operation
+	// by itself, so the error reaches the caller only once the context the
+	// client was opened with ends first.
+	ErrLeaderSwitch = status.Error(codes.Unavailable, "leadership switching")
 )
 
 // brokenStreamError is what a client reports once its stream has ended. Every

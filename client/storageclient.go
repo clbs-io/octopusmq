@@ -3,6 +3,7 @@ package client
 import (
 	"context"
 	"sync"
+	"time"
 
 	pb "github.com/clbs-io/octopusmq/api/protobuf"
 	"github.com/clbs-io/octopusmq/pkg/grpcstoragepb"
@@ -12,64 +13,86 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-// StorageClient is a thread-safe client for key-value storage operations over a bidirectional stream.
+// StorageClient is a thread-safe client for key-value storage operations over a
+// bidirectional stream.
+//
+// A StorageClient opened by Client.OpenStorage survives the loss of its stream
+// and changes of the broker's raft leader: an operation whose stream broke, or
+// that the broker refused while leadership moved, waits, reopens the stream
+// through the client's connection and is repeated, until the context the
+// StorageClient was opened with ends. GetKeys starts its listing again on the
+// new stream. Locks taken on a stream that broke are released by the broker.
 type StorageClient struct {
-	stoClient grpcstoragepb.StorageServiceClient
-	stream    grpc.BidiStreamingClient[pb.StorageRequest, pb.StorageResponse]
-	corrid    uint64
+	stoClient grpcstoragepb.StorageServiceClient // nil: the client cannot reopen its stream
 	opts      []grpc.CallOption
 	ctx       context.Context
 	cancel    context.CancelFunc
 	stoname   string
-	closed    bool
-	streamErr error
 	logger    *zap.SugaredLogger
+	reopen    sync.Mutex // held by the one caller reopening the stream
 	lock      sync.Mutex
-	errch     chan error
-	corrmap   map[uint64]chan *pb.StorageResponse
+	closed    bool
+	corrid    uint64
+	cur       *storageStream
+}
+
+// storageStream is one stream of a StorageClient and the calls waiting on it;
+// its err and corrmap are guarded by the StorageClient's lock.
+type storageStream struct {
+	s       grpc.BidiStreamingClient[pb.StorageRequest, pb.StorageResponse]
+	cancel  context.CancelFunc
+	errch   chan error
+	err     error
+	corrmap map[uint64]chan *pb.StorageResponse
+}
+
+func newStorageStream(s grpc.BidiStreamingClient[pb.StorageRequest, pb.StorageResponse], cancel context.CancelFunc) *storageStream {
+	return &storageStream{
+		s:       s,
+		cancel:  cancel,
+		errch:   make(chan error, 1),
+		corrmap: make(map[uint64]chan *pb.StorageResponse),
+	}
 }
 
 // OpenStorage opens a bidirectional stream bound to the named storage.
 // The stream is derived from ctx; call Close to release it.
 func (c *Client) OpenStorage(ctx context.Context, name string, opts ...grpc.CallOption) (*StorageClient, error) {
-	// opening on demand, on every attempt
-	streamCtx, cancel := context.WithCancel(ctx)
+	clientCtx, cancel := context.WithCancel(ctx)
 	ret := &StorageClient{
 		stoClient: c.stoConnect,
-		closed:    false,
-		stream:    nil,
-		corrid:    0,
 		opts:      opts,
-		ctx:       streamCtx,
+		ctx:       clientCtx,
 		cancel:    cancel,
 		stoname:   name,
 		logger:    c.logger,
-		errch:     make(chan error, 1),
-		corrmap:   make(map[uint64]chan *pb.StorageResponse),
 	}
-	err := ret.open() // no locks yet
+	ss, err := ret.open()
 	if err != nil {
 		cancel()
 		return nil, err
 	}
-	go ret.receiver()
+	ret.cur = ss
+	go ret.receive(ss)
 	return ret, nil
 }
 
-func (c *StorageClient) receiver() {
-	defer close(c.errch)
+// receive dispatches the responses of ss to their callers until the stream
+// ends, then reports why on ss.errch.
+func (c *StorageClient) receive(ss *storageStream) {
+	defer close(ss.errch)
 	for {
-		r, err := c.stream.Recv()
+		r, err := ss.s.Recv()
 		if err != nil {
 			broken := &brokenStreamError{cause: err}
-			c.fail(broken)
-			c.errch <- broken
+			c.fail(ss, broken)
+			ss.errch <- broken
 			return
 		}
 		// Dispatch response to the waiting caller by correlation ID.
 		c.lock.Lock()
-		if ch, ok := c.corrmap[r.CorrelationId]; ok {
-			delete(c.corrmap, r.CorrelationId)
+		if ch, ok := ss.corrmap[r.CorrelationId]; ok {
+			delete(ss.corrmap, r.CorrelationId)
 			c.lock.Unlock()
 			ch <- r
 			close(ch)
@@ -80,34 +103,36 @@ func (c *StorageClient) receiver() {
 	}
 }
 
-// fail records the error that terminated the stream and abandons every pending
-// caller. The callers are released by the closing of errch, which reports the
-// cause, so the abandoned channels are dropped rather than closed.
-func (c *StorageClient) fail(err error) {
+// fail records the error that terminated ss and abandons every caller waiting
+// on it. The callers are released by the closing of ss.errch, which reports
+// the cause, so the abandoned channels are dropped rather than closed.
+func (c *StorageClient) fail(ss *storageStream, err error) {
 	c.lock.Lock()
 	defer c.lock.Unlock()
-	c.streamErr = err
-	clear(c.corrmap)
+	ss.err = err
+	clear(ss.corrmap)
 }
 
-// terminalerr reports the error that terminated the stream.
-func (c *StorageClient) terminalerr() error {
+// terminalerr reports the error that terminated ss.
+func (c *StorageClient) terminalerr(ss *storageStream) error {
 	c.lock.Lock()
 	defer c.lock.Unlock()
-	if c.streamErr == nil {
+	if ss.err == nil {
 		return status.Error(codes.Internal, "stream closed")
 	}
-	return c.streamErr
+	return ss.err
 }
 
-func (c *StorageClient) open() (err error) {
-	c.stream, err = c.stoClient.StorageConnect(c.ctx, c.opts...)
+// open opens a stream and binds it to the storage. A stream that fails before
+// the broker answered the setup is reported as broken, so that it is retried.
+func (c *StorageClient) open() (*storageStream, error) {
+	ctx, cancel := context.WithCancel(c.ctx)
+	s, err := c.stoClient.StorageConnect(ctx, c.opts...)
 	if err != nil {
-		return
+		cancel()
+		return nil, &brokenStreamError{cause: err}
 	}
-
-	// manually setup stream without receiver yet
-	err = c.stream.Send(&pb.StorageRequest{
+	err = s.Send(&pb.StorageRequest{
 		CorrelationId: 0,
 		Command: &pb.StorageRequest_Setup{
 			Setup: &pb.StorageSetupRequest{
@@ -116,32 +141,70 @@ func (c *StorageClient) open() (err error) {
 		},
 	})
 	if err != nil {
-		return
+		cancel()
+		return nil, &brokenStreamError{cause: err}
 	}
-	var resp *pb.StorageResponse
-	resp, err = c.stream.Recv()
+	resp, err := s.Recv()
 	if err != nil {
-		return
+		cancel()
+		return nil, &brokenStreamError{cause: err}
 	}
-	if st, ok := resp.Response.(*pb.StorageResponse_Status); ok {
-		if st.Status.Code != pb.StatusCode_STATUS_CODE_OK {
-			return decodestoragestatus(st)
-		}
-	} else {
-		return status.Errorf(codes.Internal, "setup failed, invalid response type: %T", resp)
+	st, ok := resp.Response.(*pb.StorageResponse_Status)
+	if !ok {
+		cancel()
+		return nil, status.Errorf(codes.Internal, "setup failed, invalid response type: %T", resp)
 	}
-	return
+	if st.Status.Code != pb.StatusCode_STATUS_CODE_OK {
+		cancel()
+		return nil, decodestoragestatus(st)
+	}
+	return newStorageStream(s, cancel), nil
 }
 
-func (c *StorageClient) handlesend(cmd *pb.StorageRequest, keepid bool) (ch chan *pb.StorageResponse, err error) {
+// reconnect replaces old, the stream an operation failed on, with a new one,
+// unless another caller already did. The stream is opened outside the lock, so
+// that Close can cancel an attempt the broker does not answer.
+func (c *StorageClient) reconnect(old *storageStream) error {
+	c.reopen.Lock()
+	defer c.reopen.Unlock()
+
+	c.lock.Lock()
+	closed, replaced := c.closed, c.cur != old
+	c.lock.Unlock()
+	if closed {
+		return ErrStorageClientClosed
+	}
+	if replaced {
+		return nil
+	}
+
+	ss, err := c.open()
+	if err != nil {
+		return err
+	}
+	c.lock.Lock()
+	if c.closed {
+		c.lock.Unlock()
+		ss.cancel()
+		return ErrStorageClientClosed
+	}
+	c.cur = ss
+	c.lock.Unlock()
+	old.cancel()
+	go c.receive(ss)
+	return nil
+}
+
+func (c *StorageClient) handlesend(cmd *pb.StorageRequest, keepid bool) (*storageStream, chan *pb.StorageResponse, error) {
 	c.lock.Lock()
 	defer c.lock.Unlock()
 
 	if c.closed {
-		return nil, ErrStorageClientClosed
+		return nil, nil, ErrStorageClientClosed
 	}
-	if c.streamErr != nil {
-		return nil, c.streamErr
+	ss := c.cur
+	if ss.err != nil {
+		return ss, nil, ss.err
 	}
 
 	var corrid uint64
@@ -153,34 +216,69 @@ func (c *StorageClient) handlesend(cmd *pb.StorageRequest, keepid bool) (ch chan
 		cmd.CorrelationId = c.corrid
 	}
 
-	if _, ok := c.corrmap[corrid]; ok {
-		return nil, status.Errorf(codes.Internal, "correlation id collision: %d", corrid)
+	if _, ok := ss.corrmap[corrid]; ok {
+		return ss, nil, status.Errorf(codes.Internal, "correlation id collision: %d", corrid)
 	}
-	err = c.stream.Send(cmd)
-	if err != nil {
-		return nil, &brokenStreamError{cause: err}
+	if err := ss.s.Send(cmd); err != nil {
+		return ss, nil, &brokenStreamError{cause: err}
 	}
-	ch = make(chan *pb.StorageResponse)
-	c.corrmap[corrid] = ch
-	return ch, nil
+	ch := make(chan *pb.StorageResponse)
+	ss.corrmap[corrid] = ch
+	return ss, ch, nil
 }
 
-func (c *StorageClient) handleresp(cmd *pb.StorageRequest, keepid bool) (*pb.StorageResponse, error) {
-	ch, err := c.handlesend(cmd, keepid)
+// roundtrip sends cmd on the current stream and waits for its response.
+func (c *StorageClient) roundtrip(cmd *pb.StorageRequest, keepid bool) (*pb.StorageResponse, *storageStream, error) {
+	ss, ch, err := c.handlesend(cmd, keepid)
 	if err != nil {
-		return nil, err
+		return nil, ss, err
 	}
 	select {
 	case reqp, ok := <-ch:
 		if !ok {
-			return nil, status.Error(codes.Canceled, "forcibly closed")
+			return nil, ss, status.Error(codes.Canceled, "forcibly closed")
 		}
-		return reqp, nil
-	case err, ok := <-c.errch:
+		return reqp, ss, nil
+	case err, ok := <-ss.errch:
 		if !ok {
-			return nil, c.terminalerr() // the failure was already reported to another caller
+			return nil, ss, c.terminalerr(ss) // the failure was already reported to another caller
 		}
-		return nil, err
+		return nil, ss, err
+	}
+}
+
+// handleresp runs cmd and returns its response. A command whose stream broke,
+// or that the broker refused while leadership moved, is repeated on a new
+// stream until the client's context ends. A command continuing a listing
+// (keepid) belongs to its stream and is never repeated; GetKeys starts over.
+func (c *StorageClient) handleresp(cmd *pb.StorageRequest, keepid bool) (*pb.StorageResponse, error) {
+	var wait time.Duration
+	for {
+		resp, ss, err := c.roundtrip(cmd, keepid)
+		if err == nil {
+			st, ok := resp.Response.(*pb.StorageResponse_Status)
+			if !ok || st.Status.Code != pb.StatusCode_STATUS_CODE_LEADER_SWITCH || c.stoClient == nil {
+				return resp, nil
+			}
+			err = &leaderSwitchError{msg: st.Status.Message}
+		}
+		if c.stoClient == nil || ss == nil || keepid || !retryable(err) {
+			return nil, err
+		}
+		c.logger.Warnf("storage %s: %v; reconnecting", c.stoname, err)
+		for {
+			if !retrywait(c.ctx, &wait) {
+				return nil, err
+			}
+			rerr := c.reconnect(ss)
+			if rerr == nil {
+				break
+			}
+			if !retryable(rerr) {
+				return nil, rerr
+			}
+			err = rerr
+		}
 	}
 }
 
@@ -192,6 +290,8 @@ func decodestoragestatus(cc *pb.StorageResponse_Status) error {
 		return ErrStorageKeyNotFound
 	case pb.StatusCode_STATUS_CODE_STORAGE_NOT_FOUND:
 		return ErrStorageNotFound
+	case pb.StatusCode_STATUS_CODE_LEADER_SWITCH:
+		return &leaderSwitchError{msg: cc.Status.Message}
 	}
 	return status.Errorf(codes.Internal, "command error: %s, status: %d", cc.Status.Message, cc.Status.Code)
 }
@@ -203,11 +303,12 @@ func (c *StorageClient) Close() error {
 		return ErrStorageClientClosed
 	}
 	c.closed = true
-	err := c.stream.CloseSend()
+	ss := c.cur
+	err := ss.s.CloseSend()
 	// Release callers still waiting for a response. The entries must leave the map
 	// so that a late response cannot make the receiver send on a closed channel.
-	for id, ch := range c.corrmap {
-		delete(c.corrmap, id)
+	for id, ch := range ss.corrmap {
+		delete(ss.corrmap, id)
 		close(ch)
 	}
 	c.lock.Unlock()
@@ -234,7 +335,19 @@ func (c *StorageClient) Get(req *pb.StorageGetRequest) (*pb.StorageDataResponse,
 	}
 }
 
+// GetKeys lists the keys matching req. A listing whose stream broke, or that
+// the broker refused while leadership moved, starts over on a new stream.
 func (c *StorageClient) GetKeys(req *pb.StorageGetKeysRequest) ([][]byte, error) {
+	for {
+		keys, err := c.getkeys(req)
+		if err != nil && c.stoClient != nil && retryable(err) && c.ctx.Err() == nil {
+			continue // the first command of the next listing reconnects
+		}
+		return keys, err
+	}
+}
+
+func (c *StorageClient) getkeys(req *pb.StorageGetKeysRequest) ([][]byte, error) {
 	reqp, err := c.handleresp(&pb.StorageRequest{
 		Command: &pb.StorageRequest_GetKeys{
 			GetKeys: req,

@@ -3,6 +3,7 @@ package client
 import (
 	"context"
 	"sync"
+	"time"
 	"uuid"
 
 	pb "github.com/clbs-io/octopusmq/api/protobuf"
@@ -22,64 +23,89 @@ func NewRequestID() []byte {
 	return id[:]
 }
 
-// QueueClient is a thread-safe client for queue operations over a bidirectional stream.
+// QueueClient is a thread-safe client for queue operations over a bidirectional
+// stream.
+//
+// A QueueClient opened by Client.OpenQueue survives the loss of its stream and
+// changes of the broker's raft leader: an operation whose stream broke, or that
+// the broker refused while leadership moved, waits, reopens the stream through
+// the client's connection and is repeated, until the context the QueueClient
+// was opened with ends. Enqueue and BatchEnqueue requests without a request id
+// get one first, so a repeated enqueue is applied once by a broker at feature
+// level 2. Items pulled on a stream that broke are redelivered once their lease
+// expires; from feature level 2 they can still be committed, requeued or
+// deleted by id on the new stream.
 type QueueClient struct {
-	svcClient grpcpb.QueuesServiceClient
-	stream    grpc.BidiStreamingClient[pb.QueueRequest, pb.QueueResponse]
-	corrid    uint64
+	svcClient grpcpb.QueuesServiceClient // nil: the client cannot reopen its stream
 	opts      []grpc.CallOption
 	ctx       context.Context
 	cancel    context.CancelFunc
 	qname     string
-	closed    bool
-	streamErr error
 	logger    *zap.SugaredLogger
+	reopen    sync.Mutex // held by the one caller reopening the stream
 	lock      sync.Mutex
-	errch     chan error
-	corrmap   map[uint64]chan *pb.QueueResponse
+	closed    bool
+	corrid    uint64
+	cur       *queueStream
+}
+
+// queueStream is one stream of a QueueClient and the calls waiting on it; its
+// err and corrmap are guarded by the QueueClient's lock.
+type queueStream struct {
+	s       grpc.BidiStreamingClient[pb.QueueRequest, pb.QueueResponse]
+	cancel  context.CancelFunc
+	errch   chan error
+	err     error
+	corrmap map[uint64]chan *pb.QueueResponse
+}
+
+func newQueueStream(s grpc.BidiStreamingClient[pb.QueueRequest, pb.QueueResponse], cancel context.CancelFunc) *queueStream {
+	return &queueStream{
+		s:       s,
+		cancel:  cancel,
+		errch:   make(chan error, 1),
+		corrmap: make(map[uint64]chan *pb.QueueResponse),
+	}
 }
 
 // OpenQueue opens a bidirectional stream bound to the named queue.
 // The stream is derived from ctx; call Close to release it.
 func (c *Client) OpenQueue(ctx context.Context, name string, opts ...grpc.CallOption) (*QueueClient, error) {
-	// opening on demand, on every attempt
-	streamCtx, cancel := context.WithCancel(ctx)
+	clientCtx, cancel := context.WithCancel(ctx)
 	ret := &QueueClient{
 		svcClient: c.queueConnect,
-		closed:    false,
-		stream:    nil,
-		corrid:    0,
 		opts:      opts,
-		ctx:       streamCtx,
+		ctx:       clientCtx,
 		cancel:    cancel,
 		qname:     name,
 		logger:    c.logger,
-		errch:     make(chan error, 1),
-		corrmap:   make(map[uint64]chan *pb.QueueResponse),
 	}
-	err := ret.open() // no locks yet
+	qs, err := ret.open()
 	if err != nil {
 		cancel()
 		return nil, err
 	}
-	go ret.receiver()
+	ret.cur = qs
+	go ret.receive(qs)
 	return ret, nil
 }
 
-func (c *QueueClient) receiver() {
-	defer close(c.errch)
+// receive dispatches the responses of qs to their callers until the stream
+// ends, then reports why on qs.errch.
+func (c *QueueClient) receive(qs *queueStream) {
+	defer close(qs.errch)
 	for {
-		r, err := c.stream.Recv()
+		r, err := qs.s.Recv()
 		if err != nil {
 			broken := &brokenStreamError{cause: err}
-			c.fail(broken)
-			c.errch <- broken
+			c.fail(qs, broken)
+			qs.errch <- broken
 			return
 		}
 		// Dispatch response to the waiting caller by correlation ID.
 		c.lock.Lock()
-		if ch, ok := c.corrmap[r.CorrelationId]; ok {
-			delete(c.corrmap, r.CorrelationId)
+		if ch, ok := qs.corrmap[r.CorrelationId]; ok {
+			delete(qs.corrmap, r.CorrelationId)
 			c.lock.Unlock()
 			ch <- r
 			close(ch)
@@ -90,34 +116,36 @@ func (c *QueueClient) receiver() {
 	}
 }
 
-// fail records the error that terminated the stream and abandons every pending
-// caller. The callers are released by the closing of errch, which reports the
-// cause, so the abandoned channels are dropped rather than closed.
-func (c *QueueClient) fail(err error) {
+// fail records the error that terminated qs and abandons every caller waiting
+// on it. The callers are released by the closing of qs.errch, which reports
+// the cause, so the abandoned channels are dropped rather than closed.
+func (c *QueueClient) fail(qs *queueStream, err error) {
 	c.lock.Lock()
 	defer c.lock.Unlock()
-	c.streamErr = err
-	clear(c.corrmap)
+	qs.err = err
+	clear(qs.corrmap)
 }
 
-// terminalerr reports the error that terminated the stream.
-func (c *QueueClient) terminalerr() error {
+// terminalerr reports the error that terminated qs.
+func (c *QueueClient) terminalerr(qs *queueStream) error {
 	c.lock.Lock()
 	defer c.lock.Unlock()
-	if c.streamErr == nil {
+	if qs.err == nil {
 		return status.Error(codes.Internal, "stream closed")
 	}
-	return c.streamErr
+	return qs.err
 }
 
-func (c *QueueClient) open() (err error) {
-	c.stream, err = c.svcClient.Connect(c.ctx, c.opts...)
+// open opens a stream and binds it to the queue. A stream that fails before
+// the broker answered the setup is reported as broken, so that it is retried.
+func (c *QueueClient) open() (*queueStream, error) {
+	ctx, cancel := context.WithCancel(c.ctx)
+	s, err := c.svcClient.Connect(ctx, c.opts...)
 	if err != nil {
-		return
+		cancel()
+		return nil, &brokenStreamError{cause: err}
 	}
-
-	// manually setup stream without receiver yet
-	err = c.stream.Send(&pb.QueueRequest{
+	err = s.Send(&pb.QueueRequest{
 		CorrelationId: 0,
 		Command: &pb.QueueRequest_Setup{
 			Setup: &pb.SetupRequest{
@@ -126,64 +154,136 @@ func (c *QueueClient) open() (err error) {
 		},
 	})
 	if err != nil {
-		return
+		cancel()
+		return nil, &brokenStreamError{cause: err}
 	}
-	var resp *pb.QueueResponse
-	resp, err = c.stream.Recv()
+	resp, err := s.Recv()
 	if err != nil {
-		return
+		cancel()
+		return nil, &brokenStreamError{cause: err}
 	}
-	if st, ok := resp.Response.(*pb.QueueResponse_Status); ok {
-		if st.Status.Code != pb.StatusCode_STATUS_CODE_OK {
-			return decodestatus(st)
-		}
-	} else {
-		return status.Errorf(codes.Internal, "setup failed, invalid response type: %T", resp)
+	st, ok := resp.Response.(*pb.QueueResponse_Status)
+	if !ok {
+		cancel()
+		return nil, status.Errorf(codes.Internal, "setup failed, invalid response type: %T", resp)
 	}
-	return
+	if st.Status.Code != pb.StatusCode_STATUS_CODE_OK {
+		cancel()
+		return nil, decodestatus(st)
+	}
+	return newQueueStream(s, cancel), nil
 }
 
-func (c *QueueClient) handlesend(cmd *pb.QueueRequest) (ch chan *pb.QueueResponse, err error) {
+// reconnect replaces old, the stream an operation failed on, with a new one,
+// unless another caller already did. The stream is opened outside the lock, so
+// that Close can cancel an attempt the broker does not answer.
+func (c *QueueClient) reconnect(old *queueStream) error {
+	c.reopen.Lock()
+	defer c.reopen.Unlock()
+
+	c.lock.Lock()
+	closed, replaced := c.closed, c.cur != old
+	c.lock.Unlock()
+	if closed {
+		return ErrQueueClientClosed
+	}
+	if replaced {
+		return nil
+	}
+
+	qs, err := c.open()
+	if err != nil {
+		return err
+	}
+	c.lock.Lock()
+	if c.closed {
+		c.lock.Unlock()
+		qs.cancel()
+		return ErrQueueClientClosed
+	}
+	c.cur = qs
+	c.lock.Unlock()
+	old.cancel()
+	go c.receive(qs)
+	return nil
+}
+
+func (c *QueueClient) handlesend(cmd *pb.QueueRequest) (*queueStream, chan *pb.QueueResponse, error) {
 	c.lock.Lock()
 	defer c.lock.Unlock()
 
 	if c.closed {
-		return nil, ErrQueueClientClosed
+		return nil, nil, ErrQueueClientClosed
 	}
-	if c.streamErr != nil {
-		return nil, c.streamErr
+	qs := c.cur
+	if qs.err != nil {
+		return qs, nil, qs.err
 	}
 
 	c.corrid++
-	if _, ok := c.corrmap[c.corrid]; ok {
-		return nil, status.Errorf(codes.Internal, "correlation id collision: %d", c.corrid)
+	if _, ok := qs.corrmap[c.corrid]; ok {
+		return qs, nil, status.Errorf(codes.Internal, "correlation id collision: %d", c.corrid)
 	}
 	cmd.CorrelationId = c.corrid
-	err = c.stream.Send(cmd)
-	if err != nil {
-		return nil, &brokenStreamError{cause: err}
+	if err := qs.s.Send(cmd); err != nil {
+		return qs, nil, &brokenStreamError{cause: err}
 	}
-	ch = make(chan *pb.QueueResponse)
-	c.corrmap[c.corrid] = ch
-	return ch, nil
+	ch := make(chan *pb.QueueResponse)
+	qs.corrmap[c.corrid] = ch
+	return qs, ch, nil
 }
 
-func (c *QueueClient) handleresp(cmd *pb.QueueRequest) (*pb.QueueResponse, error) {
-	ch, err := c.handlesend(cmd)
+// roundtrip sends cmd on the current stream and waits for its response.
+func (c *QueueClient) roundtrip(cmd *pb.QueueRequest) (*pb.QueueResponse, *queueStream, error) {
+	qs, ch, err := c.handlesend(cmd)
 	if err != nil {
-		return nil, err
+		return nil, qs, err
 	}
 	select {
 	case reqp, ok := <-ch:
 		if !ok {
-			return nil, status.Error(codes.Canceled, "forcibly closed")
+			return nil, qs, status.Error(codes.Canceled, "forcibly closed")
 		}
-		return reqp, nil
-	case err, ok := <-c.errch:
+		return reqp, qs, nil
+	case err, ok := <-qs.errch:
 		if !ok {
-			return nil, c.terminalerr() // the failure was already reported to another caller
+			return nil, qs, c.terminalerr(qs) // the failure was already reported to another caller
 		}
-		return nil, err
+		return nil, qs, err
+	}
+}
+
+// handleresp runs cmd and returns its response. A command whose stream broke,
+// or that the broker refused while leadership moved, is repeated on a new
+// stream until the client's context ends.
+func (c *QueueClient) handleresp(cmd *pb.QueueRequest) (*pb.QueueResponse, error) {
+	var wait time.Duration
+	for {
+		resp, qs, err := c.roundtrip(cmd)
+		if err == nil {
+			st, ok := resp.Response.(*pb.QueueResponse_Status)
+			if !ok || st.Status.Code != pb.StatusCode_STATUS_CODE_LEADER_SWITCH || c.svcClient == nil {
+				return resp, nil
+			}
+			err = &leaderSwitchError{msg: st.Status.Message}
+		}
+		if c.svcClient == nil || qs == nil || !retryable(err) {
+			return nil, err
+		}
+		c.logger.Warnf("queue %s: %v; reconnecting", c.qname, err)
+		for {
+			if !retrywait(c.ctx, &wait) {
+				return nil, err
+			}
+			rerr := c.reconnect(qs)
+			if rerr == nil {
+				break
+			}
+			if !retryable(rerr) {
+				return nil, rerr
+			}
+			err = rerr
+		}
 	}
 }
 
@@ -195,6 +295,8 @@ func decodestatus(cc *pb.QueueResponse_Status) error {
 		return ErrQueueNotFound
 	case pb.StatusCode_STATUS_CODE_QUEUE_PAUSED:
 		return ErrQueuePaused
+	case pb.StatusCode_STATUS_CODE_LEADER_SWITCH:
+		return &leaderSwitchError{msg: cc.Status.Message}
 	}
 	return status.Errorf(codes.Internal, "command error: %s, status: %d", cc.Status.Message, cc.Status.Code)
 }
@@ -206,11 +308,12 @@ func (c *QueueClient) Close() error {
 		return ErrQueueClientClosed
 	}
 	c.closed = true
-	err := c.stream.CloseSend()
+	qs := c.cur
+	err := qs.s.CloseSend()
 	// Release callers still waiting for a response. The entries must leave the map
 	// so that a late response cannot make the receiver send on a closed channel.
-	for id, ch := range c.corrmap {
-		delete(c.corrmap, id)
+	for id, ch := range qs.corrmap {
+		delete(qs.corrmap, id)
 		close(ch)
 	}
 	c.lock.Unlock()
@@ -218,7 +321,19 @@ func (c *QueueClient) Close() error {
 	return err
 }
 
+// withRequestID gives an enqueue without a request id one, when the client
+// repeats failed operations, so that a repeated enqueue is applied once.
+func (c *QueueClient) withRequestID(id []byte) []byte {
+	if len(id) == 0 && c.svcClient != nil {
+		return NewRequestID()
+	}
+	return id
+}
+
+// Enqueue enqueues one item. A request without a request id gets one, set on
+// req.
 func (c *QueueClient) Enqueue(req *pb.EnqueueRequest) (*pb.EnqueueResponse, error) {
+	req.RequestId = c.withRequestID(req.RequestId)
 	reqp, err := c.handleresp(&pb.QueueRequest{
 		Command: &pb.QueueRequest_Enqueue{
 			Enqueue: req,
@@ -237,7 +352,10 @@ func (c *QueueClient) Enqueue(req *pb.EnqueueRequest) (*pb.EnqueueResponse, erro
 	}
 }
 
+// BatchEnqueue enqueues items in one commit. A request without a request id
+// gets one, set on req.
 func (c *QueueClient) BatchEnqueue(req *pb.BatchEnqueueRequest) (*pb.BatchEnqueueResponse, error) {
+	req.RequestId = c.withRequestID(req.RequestId)
 	reqp, err := c.handleresp(&pb.QueueRequest{
 		Command: &pb.QueueRequest_BatchEnqueue{
 			BatchEnqueue: req,
