@@ -1,0 +1,81 @@
+syntax = "proto3";
+package io.clbs.octopusmq.grpc.management;
+
+import "google/protobuf/empty.proto";
+
+option go_package = "github.com/clbs-io/octopusmq/pkg/grpcclustermgmtpb";
+
+// ClusterService provides cluster membership inspection and replica maintenance operations.
+service ClusterService {
+  // ListMembers returns every replica of the cluster, including replicas that are currently not voters,
+  // such as a destroyed replica before it rejoins. It is served by the leader.
+  rpc ListMembers(google.protobuf.Empty) returns (ListMembersResponse);
+  // DestroyMember removes a replica from the cluster. The removed replica wipes its local data and
+  // rejoins the cluster at its next start, resynchronizing from the leader. Only one replica is
+  // destroyed at a time, and the cluster keeps a working majority throughout.
+  //
+  // A replica that is already not a voter is reported as removed, so repeating the call is harmless.
+  //
+  // Status codes:
+  //   - InvalidArgument: the ordinal is outside the set of replicas of the cluster.
+  //   - FailedPrecondition: another replica is still resynchronizing, or removing the replica would leave
+  //     the cluster without a working majority. The message names the replicas involved.
+  //   - Unavailable: leadership moved while the call was served. Retry the call; the new leader
+  //     evaluates it again.
+  //   - DeadlineExceeded: the removal was proposed but did not take effect in time. Check ListMembers
+  //     and repeat the call.
+  rpc DestroyMember(DestroyMemberRequest) returns (DestroyMemberResponse);
+}
+
+// MemberState is the replication state of a replica as seen by the leader.
+enum MemberState {
+  // MEMBER_STATE_UNSPECIFIED is never returned by a broker that reports the state.
+  MEMBER_STATE_UNSPECIFIED = 0;
+  // MEMBER_STATE_REPLICATE means the replica follows the leader's log and receives entries steadily.
+  MEMBER_STATE_REPLICATE = 1;
+  // MEMBER_STATE_PROBE means the leader is still finding the point where the replica's log matches its own.
+  MEMBER_STATE_PROBE = 2;
+  // MEMBER_STATE_SNAPSHOT means the replica is being brought up to date from a snapshot.
+  MEMBER_STATE_SNAPSHOT = 3;
+  // MEMBER_STATE_NOT_A_MEMBER means the replica is not part of the cluster's voter set and has no progress.
+  MEMBER_STATE_NOT_A_MEMBER = 4;
+}
+
+// Member describes one replica of the cluster.
+message Member {
+  // ordinal is the index of the replica in the StatefulSet.
+  uint32 ordinal = 1;
+  // id is the Raft node id of the replica.
+  uint64 id = 2;
+  // voter tells whether the replica is a voting member of the cluster.
+  bool voter = 3;
+  // leader tells whether the replica is the current leader.
+  bool leader = 4;
+  // state is the replication state of the replica.
+  MemberState state = 5;
+  // match_index is the highest log index known to be replicated on the replica.
+  uint64 match_index = 6;
+  // lag is the number of log entries the replica is behind the leader's last index.
+  uint64 lag = 7;
+  // last_heard_seconds is the time since the leader last heard from the replica, negative when it never did.
+  double last_heard_seconds = 8;
+  // snapshot_in_flight tells whether a data snapshot is being streamed to the replica.
+  bool snapshot_in_flight = 9;
+}
+
+// ListMembersResponse lists the replicas of the cluster.
+message ListMembersResponse {
+  repeated Member members = 1;
+}
+
+// DestroyMemberRequest selects the replica to remove.
+message DestroyMemberRequest {
+  // ordinal is the index of the replica in the StatefulSet.
+  uint32 ordinal = 1;
+}
+
+// DestroyMemberResponse reports the removed replica.
+message DestroyMemberResponse {
+  // removed_id is the Raft node id of the removed replica.
+  uint64 removed_id = 1;
+}
