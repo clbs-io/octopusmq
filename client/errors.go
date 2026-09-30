@@ -30,6 +30,10 @@ var (
 	// by itself, so the error reaches the caller only once the context the
 	// client was opened with ends first.
 	ErrLeaderSwitch = status.Error(codes.Unavailable, "leadership switching")
+
+	// ErrNotSupported matches the error of a call the broker does not implement,
+	// such as a cluster management call sent to a broker that predates it.
+	ErrNotSupported = status.Error(codes.Unimplemented, "not supported by the broker")
 )
 
 // brokenStreamError is what a client reports once its stream has ended. Every

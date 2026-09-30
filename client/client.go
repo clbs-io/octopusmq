@@ -3,11 +3,13 @@ package client
 import (
 	"context"
 	"errors"
+	"time"
 
 	"go.uber.org/zap"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
+	"github.com/clbs-io/octopusmq/pkg/grpcclustermgmtpb"
 	"github.com/clbs-io/octopusmq/pkg/grpcmgmtpb"
 	"github.com/clbs-io/octopusmq/pkg/grpcstoragemgmtpb"
 	"github.com/clbs-io/octopusmq/pkg/grpcstoragepb"
@@ -24,6 +26,7 @@ type Client struct {
 	queueConnect grpcpb.QueuesServiceClient
 	mgmtClient   grpcmgmtpb.ManagementServiceClient
 	stoClient    grpcstoragemgmtpb.StorageManagementServiceClient
+	clusterMgmt  grpcclustermgmtpb.ClusterServiceClient
 	stoConnect   grpcstoragepb.StorageServiceClient
 	grpcClient   *grpc.ClientConn
 	logger       *zap.SugaredLogger
@@ -47,6 +50,7 @@ func NewClient(target string, logger *zap.SugaredLogger, grpcOptions ...grpc.Dia
 		grpcClient:   grpcClient,
 		mgmtClient:   mgmtClient,
 		stoClient:    stoClient,
+		clusterMgmt:  grpcclustermgmtpb.NewClusterServiceClient(grpcClient),
 		stoConnect:   stoConnect,
 		logger:       logger,
 	}
@@ -151,4 +155,48 @@ func (c *Client) EnsureStorage(ctx context.Context, req *pb.CreateStorageRequest
 		return nil
 	}
 	return err
+}
+
+// handleclustererrors reports a broker that does not serve the cluster service
+// as ErrNotSupported and passes every other error through unchanged.
+func handleclustererrors(err error) error {
+	if err == nil {
+		return nil
+	}
+	if st, ok := status.FromError(err); ok && st.Code() == codes.Unimplemented {
+		return ErrNotSupported
+	}
+	return err
+}
+
+// ListMembers returns the replicas of the cluster, including those that are
+// currently not voters. It returns ErrNotSupported when the broker predates the
+// cluster service.
+func (c *Client) ListMembers(ctx context.Context) ([]*grpcclustermgmtpb.Member, error) {
+	resp, err := c.clusterMgmt.ListMembers(ctx, &emptypb.Empty{})
+	if err != nil {
+		return nil, handleclustererrors(err)
+	}
+	return resp.GetMembers(), nil
+}
+
+// DestroyMember removes the replica with the given ordinal from the cluster and
+// returns its Raft node id. The replica wipes its data and rejoins at its next
+// start. Removing a replica that is not a voter succeeds.
+//
+// The call rides out a leader switch: it is repeated on Unavailable until ctx
+// ends, and then returns the last error. Every other broker error, such as
+// FailedPrecondition while another replica resynchronizes, is returned
+// unchanged, and ErrNotSupported stands for a broker without the cluster service.
+func (c *Client) DestroyMember(ctx context.Context, ordinal uint32) (uint64, error) {
+	var wait time.Duration
+	for {
+		resp, err := c.clusterMgmt.DestroyMember(ctx, &grpcclustermgmtpb.DestroyMemberRequest{Ordinal: ordinal})
+		if err == nil {
+			return resp.GetRemovedId(), nil
+		}
+		if st, ok := status.FromError(err); !ok || st.Code() != codes.Unavailable || !retrywait(ctx, &wait) {
+			return 0, handleclustererrors(err)
+		}
+	}
 }
