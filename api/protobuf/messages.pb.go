@@ -191,7 +191,9 @@ func (x *Item) GetValue() []byte {
 // InputItem represents an item to be enqueued into the queue.
 type InputItem struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// Time-to-live duration. The item expires after this duration. Set to 0 for no expiration.
+	// Delay before the enqueued item becomes available to pull; it never
+	// expires. Omit or set to 0 for immediate availability. Requeue uses the
+	// same delay (RequeueItem.ttl).
 	Ttl *durationpb.Duration `protobuf:"bytes,1,opt,name=ttl,proto3" json:"ttl,omitempty"`
 	// Priority of the item. The lower the value, the lower the priority.
 	Priority uint32 `protobuf:"varint,2,opt,name=priority,proto3" json:"priority,omitempty"`
