@@ -26,15 +26,18 @@ func NewRequestID() []byte {
 // QueueClient is a thread-safe client for queue operations over a bidirectional
 // stream.
 //
-// A QueueClient opened by Client.OpenQueue survives the loss of its stream and
-// changes of the broker's raft leader: an operation whose stream broke, or that
-// the broker refused while leadership moved, waits, reopens the stream through
-// the client's connection and is repeated, until the context the QueueClient
-// was opened with ends. Enqueue and BatchEnqueue requests without a request id
-// get one first, so a repeated enqueue is applied once by a broker at feature
-// level 2. Items pulled on a stream that broke are redelivered once their lease
-// expires; from feature level 2 they can still be committed, requeued or
-// deleted by id on the new stream.
+// A QueueClient opened by Client.OpenQueue outlives its stream: the caller
+// never opens it again. When the stream breaks, or its broker stops leading
+// the cluster, the broker frees the items pulled on it and not yet committed,
+// requeued or deleted. An operation that meets such a loss while the stream
+// held no item is repeated on a new stream, reopened through the client's
+// connection, with a backoff for up to the reopen window (see WithReopenWindow): nothing the caller holds
+// is affected. One that meets it while the stream held items fails with
+// ErrLeasesLost and is not repeated: the caller must treat those items as
+// free, and whether the operation took effect is unknown. Enqueue and
+// BatchEnqueue requests without a request id get one, set on the request, so
+// a repeated enqueue is applied once by a broker at feature level 2; below
+// it, a repeat may enqueue a duplicate.
 type QueueClient struct {
 	svcClient grpcpb.QueuesServiceClient // nil: the client cannot reopen its stream
 	opts      []grpc.CallOption
@@ -47,16 +50,26 @@ type QueueClient struct {
 	closed    bool
 	corrid    uint64
 	cur       *queueStream
+	lost      *lostHandler
+	window    time.Duration // the reopen window, see WithReopenWindow
 }
 
 // queueStream is one stream of a QueueClient and the calls waiting on it; its
-// err and corrmap are guarded by the QueueClient's lock.
+// err, corrmap, held, dropped and leased are guarded by the QueueClient's
+// lock.
 type queueStream struct {
 	s       grpc.BidiStreamingClient[pb.QueueRequest, pb.QueueResponse]
 	cancel  context.CancelFunc
 	errch   chan error
 	err     error
 	corrmap map[uint64]chan *pb.QueueResponse
+	// held is the items pulled on the stream and not yet committed,
+	// requeued or deleted.
+	held map[uint64]struct{}
+	// dropped is set once the stream was lost, and leased then reports
+	// whether it held items; reported is set once an operation failed with
+	// ErrLeasesLost for it.
+	dropped, leased, reported bool
 }
 
 func newQueueStream(s grpc.BidiStreamingClient[pb.QueueRequest, pb.QueueResponse], cancel context.CancelFunc) *queueStream {
@@ -65,6 +78,7 @@ func newQueueStream(s grpc.BidiStreamingClient[pb.QueueRequest, pb.QueueResponse
 		cancel:  cancel,
 		errch:   make(chan error, 1),
 		corrmap: make(map[uint64]chan *pb.QueueResponse),
+		held:    make(map[uint64]struct{}),
 	}
 }
 
@@ -79,6 +93,8 @@ func (c *Client) OpenQueue(ctx context.Context, name string, opts ...grpc.CallOp
 		cancel:    cancel,
 		qname:     name,
 		logger:    c.logger,
+		lost:      c.lost,
+		window:    reopenWindowOf(opts),
 	}
 	qs, err := ret.open()
 	if err != nil {
@@ -253,16 +269,22 @@ func (c *QueueClient) roundtrip(cmd *pb.QueueRequest) (*pb.QueueResponse, *queue
 	}
 }
 
-// handleresp runs cmd and returns its response. A command whose stream broke,
-// or that the broker refused while leadership moved, is repeated on a new
-// stream until the client's context ends.
+// handleresp runs cmd and returns its response. A command whose stream was
+// lost, or which the broker refused while leadership moved, is repeated on a
+// new stream while the lost stream held no item, with a backoff for up to
+// the reopen window (see WithReopenWindow); otherwise it fails with ErrLeasesLost.
 func (c *QueueClient) handleresp(cmd *pb.QueueRequest) (*pb.QueueResponse, error) {
 	var wait time.Duration
+	var window context.Context
 	for {
+		if err := c.ensure(); err != nil {
+			return nil, err
+		}
 		resp, qs, err := c.roundtrip(cmd)
 		if err == nil {
 			st, ok := resp.Response.(*pb.QueueResponse_Status)
 			if !ok || st.Status.Code != pb.StatusCode_STATUS_CODE_LEADER_SWITCH || c.svcClient == nil {
+				c.track(qs, cmd, resp)
 				return resp, nil
 			}
 			err = &leaderSwitchError{msg: st.Status.Message}
@@ -270,21 +292,119 @@ func (c *QueueClient) handleresp(cmd *pb.QueueRequest) (*pb.QueueResponse, error
 		if c.svcClient == nil || qs == nil || !retryable(err) {
 			return nil, err
 		}
-		c.logger.Warnf("queue %s: %v; reconnecting", c.qname, err)
-		for {
-			if !retrywait(c.ctx, &wait) {
-				return nil, err
-			}
-			rerr := c.reconnect(qs)
-			if rerr == nil {
-				break
-			}
-			if !retryable(rerr) {
-				return nil, rerr
-			}
-			err = rerr
+		if c.drop(qs, err) {
+			c.markreported(qs)
+			return nil, &leasesLostError{cause: err}
+		}
+		if window == nil {
+			var cancel context.CancelFunc
+			window, cancel = context.WithTimeout(c.ctx, c.window)
+			defer cancel()
+		}
+		if !retrywait(window, &wait) {
+			return nil, err
 		}
 	}
+}
+
+// track records on qs the items a pull handed out and forgets those an
+// answered commit, requeue or delete settled.
+func (c *QueueClient) track(qs *queueStream, cmd *pb.QueueRequest, resp *pb.QueueResponse) {
+	c.lock.Lock()
+	defer c.lock.Unlock()
+	switch r := resp.Response.(type) {
+	case *pb.QueueResponse_Pull:
+		for _, it := range r.Pull.GetItems() {
+			qs.held[it.GetId()] = struct{}{}
+		}
+		return
+	case *pb.QueueResponse_PullSingle:
+		if it := r.PullSingle.GetItem(); it != nil {
+			qs.held[it.GetId()] = struct{}{}
+		}
+		return
+	case *pb.QueueResponse_Status:
+		return // the command failed: nothing was settled
+	}
+	switch k := cmd.Command.(type) {
+	case *pb.QueueRequest_CommitSingle:
+		delete(qs.held, k.CommitSingle.GetId())
+	case *pb.QueueRequest_Commit:
+		for _, id := range k.Commit.GetIds() {
+			delete(qs.held, id)
+		}
+	case *pb.QueueRequest_RequeueSingle:
+		delete(qs.held, k.RequeueSingle.GetItem().GetId())
+	case *pb.QueueRequest_Requeue:
+		for _, it := range k.Requeue.GetItems() {
+			delete(qs.held, it.GetId())
+		}
+	case *pb.QueueRequest_DeleteSingle:
+		delete(qs.held, k.DeleteSingle.GetId())
+	case *pb.QueueRequest_Delete:
+		for _, id := range k.Delete.GetIds() {
+			delete(qs.held, id)
+		}
+	}
+}
+
+// ensure reopens the stream once it was dropped or broke, when the client
+// can, retrying for a while (see reopening); the operation returns its error.
+// A stream that broke while no operation was waiting on it still held items
+// the broker freed: the first operation to find it fails with ErrLeasesLost.
+func (c *QueueClient) ensure() error {
+	c.lock.Lock()
+	closed, qs := c.closed, c.cur
+	dead := qs != nil && qs.err != nil
+	var cause error
+	if dead {
+		cause = qs.err
+	}
+	c.lock.Unlock()
+	if closed {
+		return ErrQueueClientClosed
+	}
+	if !dead || c.svcClient == nil {
+		return nil
+	}
+	if c.drop(qs, cause) && c.markreported(qs) {
+		return &leasesLostError{cause: cause}
+	}
+	return reopening(c.ctx, c.window, func() error { return c.reconnect(qs) })
+}
+
+// markreported records that an operation reported the lost leases of qs, and
+// reports whether it is the first.
+func (c *QueueClient) markreported(qs *queueStream) bool {
+	c.lock.Lock()
+	defer c.lock.Unlock()
+	first := !qs.reported
+	qs.reported = true
+	return first
+}
+
+// drop ends qs after err, so that the next operation reopens the stream; the
+// broker frees what the stream held once it closes. It reports whether the
+// stream held items, and reports the loss, once per stream, to the client's
+// handler.
+func (c *QueueClient) drop(qs *queueStream, err error) bool {
+	c.lock.Lock()
+	first := !qs.dropped
+	if first {
+		qs.dropped = true
+		qs.leased = len(qs.held) > 0
+		if qs.err == nil {
+			qs.err = err
+		}
+	}
+	leased := qs.leased
+	c.lock.Unlock()
+	qs.cancel()
+	if first {
+		c.logger.Warnf("queue %s: %v; holding items: %v; the next operation reconnects", c.qname, err, leased)
+		c.lost.call(ConnectionLost{Queue: c.qname, Err: err, LeasesLost: leased})
+	}
+	return leased
 }
 
 func decodestatus(cc *pb.QueueResponse_Status) error {
@@ -322,7 +442,8 @@ func (c *QueueClient) Close() error {
 }
 
 // withRequestID gives an enqueue without a request id one, when the client
-// repeats failed operations, so that a repeated enqueue is applied once.
+// can reopen its stream, so that the caller may repeat a failed enqueue and
+// have it applied once.
 func (c *QueueClient) withRequestID(id []byte) []byte {
 	if len(id) == 0 && c.svcClient != nil {
 		return NewRequestID()

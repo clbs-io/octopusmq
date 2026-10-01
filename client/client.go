@@ -30,6 +30,7 @@ type Client struct {
 	stoConnect   grpcstoragepb.StorageServiceClient
 	grpcClient   *grpc.ClientConn
 	logger       *zap.SugaredLogger
+	lost         *lostHandler
 }
 
 // NewClient creates a new client for the given address
@@ -53,6 +54,7 @@ func NewClient(target string, logger *zap.SugaredLogger, grpcOptions ...grpc.Dia
 		clusterMgmt:  grpcclustermgmtpb.NewClusterServiceClient(grpcClient),
 		stoConnect:   stoConnect,
 		logger:       logger,
+		lost:         &lostHandler{},
 	}
 }
 

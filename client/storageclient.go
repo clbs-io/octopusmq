@@ -2,6 +2,7 @@ package client
 
 import (
 	"context"
+	"errors"
 	"sync"
 	"time"
 
@@ -16,12 +17,15 @@ import (
 // StorageClient is a thread-safe client for key-value storage operations over a
 // bidirectional stream.
 //
-// A StorageClient opened by Client.OpenStorage survives the loss of its stream
-// and changes of the broker's raft leader: an operation whose stream broke, or
-// that the broker refused while leadership moved, waits, reopens the stream
-// through the client's connection and is repeated, until the context the
-// StorageClient was opened with ends. GetKeys starts its listing again on the
-// new stream. Locks taken on a stream that broke are released by the broker.
+// A StorageClient opened by Client.OpenStorage outlives its stream: the caller
+// never opens it again. When the stream breaks, or its broker stops leading
+// the cluster, the broker releases the keys locked on it. An operation that
+// meets such a loss while the stream held no lock is repeated on a new
+// stream, reopened through the client's connection, with a backoff for up to
+// the reopen window (see WithReopenWindow); GetKeys starts its listing over. One that meets it while the
+// stream held locks fails with ErrLeasesLost and is not repeated: the caller
+// must treat those keys as released, and whether the operation took effect
+// is unknown.
 type StorageClient struct {
 	stoClient grpcstoragepb.StorageServiceClient // nil: the client cannot reopen its stream
 	opts      []grpc.CallOption
@@ -34,16 +38,25 @@ type StorageClient struct {
 	closed    bool
 	corrid    uint64
 	cur       *storageStream
+	lost      *lostHandler
+	window    time.Duration // the reopen window, see WithReopenWindow
 }
 
 // storageStream is one stream of a StorageClient and the calls waiting on it;
-// its err and corrmap are guarded by the StorageClient's lock.
+// its err, corrmap, held, dropped, leased and reported are guarded by the
+// StorageClient's lock.
 type storageStream struct {
 	s       grpc.BidiStreamingClient[pb.StorageRequest, pb.StorageResponse]
 	cancel  context.CancelFunc
 	errch   chan error
 	err     error
 	corrmap map[uint64]chan *pb.StorageResponse
+	// held is the ids of the keys locked on the stream and not yet released.
+	held map[uint64]struct{}
+	// dropped is set once the stream was lost, and leased then reports
+	// whether it held locks; reported is set once an operation failed with
+	// ErrLeasesLost for it.
+	dropped, leased, reported bool
 }
 
 func newStorageStream(s grpc.BidiStreamingClient[pb.StorageRequest, pb.StorageResponse], cancel context.CancelFunc) *storageStream {
@@ -52,6 +65,7 @@ func newStorageStream(s grpc.BidiStreamingClient[pb.StorageRequest, pb.StorageRe
 		cancel:  cancel,
 		errch:   make(chan error, 1),
 		corrmap: make(map[uint64]chan *pb.StorageResponse),
+		held:    make(map[uint64]struct{}),
 	}
 }
 
@@ -66,6 +80,8 @@ func (c *Client) OpenStorage(ctx context.Context, name string, opts ...grpc.Call
 		cancel:    cancel,
 		stoname:   name,
 		logger:    c.logger,
+		lost:      c.lost,
+		window:    reopenWindowOf(opts),
 	}
 	ss, err := ret.open()
 	if err != nil {
@@ -247,39 +263,127 @@ func (c *StorageClient) roundtrip(cmd *pb.StorageRequest, keepid bool) (*pb.Stor
 	}
 }
 
-// handleresp runs cmd and returns its response. A command whose stream broke,
-// or that the broker refused while leadership moved, is repeated on a new
-// stream until the client's context ends. A command continuing a listing
-// (keepid) belongs to its stream and is never repeated; GetKeys starts over.
+// handleresp runs cmd and returns its response. A command whose stream was
+// lost, or which the broker refused while leadership moved, is repeated on a
+// new stream while the lost stream held no lock, with a backoff for up to
+// the reopen window (see WithReopenWindow); otherwise it fails with ErrLeasesLost. A command continuing a
+// listing (keepid) belongs to its stream and is never repeated.
 func (c *StorageClient) handleresp(cmd *pb.StorageRequest, keepid bool) (*pb.StorageResponse, error) {
 	var wait time.Duration
+	var window context.Context
 	for {
+		if !keepid {
+			if err := c.ensure(); err != nil {
+				return nil, err
+			}
+		}
 		resp, ss, err := c.roundtrip(cmd, keepid)
 		if err == nil {
 			st, ok := resp.Response.(*pb.StorageResponse_Status)
 			if !ok || st.Status.Code != pb.StatusCode_STATUS_CODE_LEADER_SWITCH || c.stoClient == nil {
+				c.track(ss, cmd, resp)
 				return resp, nil
 			}
 			err = &leaderSwitchError{msg: st.Status.Message}
 		}
-		if c.stoClient == nil || ss == nil || keepid || !retryable(err) {
+		if c.stoClient == nil || ss == nil || !retryable(err) {
 			return nil, err
 		}
-		c.logger.Warnf("storage %s: %v; reconnecting", c.stoname, err)
-		for {
-			if !retrywait(c.ctx, &wait) {
-				return nil, err
-			}
-			rerr := c.reconnect(ss)
-			if rerr == nil {
-				break
-			}
-			if !retryable(rerr) {
-				return nil, rerr
-			}
-			err = rerr
+		if c.drop(ss, err) {
+			c.markreported(ss)
+			return nil, &leasesLostError{cause: err}
+		}
+		if keepid {
+			return nil, err
+		}
+		if window == nil {
+			var cancel context.CancelFunc
+			window, cancel = context.WithTimeout(c.ctx, c.window)
+			defer cancel()
+		}
+		if !retrywait(window, &wait) {
+			return nil, err
 		}
 	}
+}
+
+// track records on ss the key a lock took and forgets one a release ended.
+func (c *StorageClient) track(ss *storageStream, cmd *pb.StorageRequest, resp *pb.StorageResponse) {
+	c.lock.Lock()
+	defer c.lock.Unlock()
+	switch k := cmd.Command.(type) {
+	case *pb.StorageRequest_LockAnyWithId:
+		if d, ok := resp.Response.(*pb.StorageResponse_DataResponse); ok {
+			ss.held[d.DataResponse.GetId()] = struct{}{}
+		}
+	case *pb.StorageRequest_ReleaseId:
+		if st, ok := resp.Response.(*pb.StorageResponse_Status); ok {
+			switch st.Status.Code {
+			case pb.StatusCode_STATUS_CODE_OK, pb.StatusCode_STATUS_CODE_ITEM_NOT_FOUND: // released, or never this stream's
+				delete(ss.held, k.ReleaseId.GetId())
+			}
+		}
+	}
+}
+
+// ensure reopens the stream once it was dropped or broke, when the client
+// can, retrying for a while (see reopening); the operation returns its error.
+// A stream that broke while no operation was waiting on it still held locks
+// the broker released: the first operation to find it fails with
+// ErrLeasesLost.
+func (c *StorageClient) ensure() error {
+	c.lock.Lock()
+	closed, ss := c.closed, c.cur
+	dead := ss != nil && ss.err != nil
+	var cause error
+	if dead {
+		cause = ss.err
+	}
+	c.lock.Unlock()
+	if closed {
+		return ErrStorageClientClosed
+	}
+	if !dead || c.stoClient == nil {
+		return nil
+	}
+	if c.drop(ss, cause) && c.markreported(ss) {
+		return &leasesLostError{cause: cause}
+	}
+	return reopening(c.ctx, c.window, func() error { return c.reconnect(ss) })
+}
+
+// markreported records that an operation reported the lost locks of ss, and
+// reports whether it is the first.
+func (c *StorageClient) markreported(ss *storageStream) bool {
+	c.lock.Lock()
+	defer c.lock.Unlock()
+	first := !ss.reported
+	ss.reported = true
+	return first
+}
+
+// drop ends ss after err, so that the next operation reopens the stream; the
+// broker releases the stream's locks once it closes. It reports whether the
+// stream held locks, and reports the loss, once per stream, to the client's
+// handler.
+func (c *StorageClient) drop(ss *storageStream, err error) bool {
+	c.lock.Lock()
+	first := !ss.dropped
+	if first {
+		ss.dropped = true
+		ss.leased = len(ss.held) > 0
+		if ss.err == nil {
+			ss.err = err
+		}
+	}
+	leased := ss.leased
+	c.lock.Unlock()
+	ss.cancel()
+	if first {
+		c.logger.Warnf("storage %s: %v; holding locks: %v; the next operation reconnects", c.stoname, err, leased)
+		c.lost.call(ConnectionLost{Storage: c.stoname, Err: err, LeasesLost: leased})
+	}
+	return leased
 }
 
 func decodestoragestatus(cc *pb.StorageResponse_Status) error {
@@ -335,15 +439,25 @@ func (c *StorageClient) Get(req *pb.StorageGetRequest) (*pb.StorageDataResponse,
 	}
 }
 
-// GetKeys lists the keys matching req. A listing whose stream broke, or that
-// the broker refused while leadership moved, starts over on a new stream.
+// GetKeys lists the keys matching req. A listing whose stream was lost
+// midway starts over on a new stream, like any other operation (see
+// StorageClient).
 func (c *StorageClient) GetKeys(req *pb.StorageGetKeysRequest) ([][]byte, error) {
+	var wait time.Duration
+	var window context.Context
 	for {
 		keys, err := c.getkeys(req)
-		if err != nil && c.stoClient != nil && retryable(err) && c.ctx.Err() == nil {
-			continue // the first command of the next listing reconnects
+		if err == nil || c.stoClient == nil || !retryable(err) || errors.Is(err, ErrLeasesLost) {
+			return keys, err
 		}
-		return keys, err
+		if window == nil {
+			var cancel context.CancelFunc
+			window, cancel = context.WithTimeout(c.ctx, c.window)
+			defer cancel()
+		}
+		if !retrywait(window, &wait) {
+			return nil, err
+		}
 	}
 }
 

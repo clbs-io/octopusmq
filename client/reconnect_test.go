@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"fmt"
 	"sync"
 	"testing"
 	"time"
@@ -59,6 +60,15 @@ type fakeBroker struct {
 	streams int
 	queue   answerFunc[pb.QueueRequest, pb.QueueResponse]
 	storage answerFunc[pb.StorageRequest, pb.StorageResponse]
+	queues  map[int]*scriptedStream[pb.QueueRequest, pb.QueueResponse]
+}
+
+// breakQueue breaks the n-th stream while no call waits on it.
+func (b *fakeBroker) breakQueue(n int) {
+	b.lock.Lock()
+	s := b.queues[n]
+	b.lock.Unlock()
+	s.once.Do(func() { close(s.recv) })
 }
 
 func (b *fakeBroker) next() int {
@@ -75,7 +85,14 @@ func (b *fakeBroker) opened() int {
 }
 
 func (b *fakeBroker) Connect(ctx context.Context, _ ...grpc.CallOption) (grpc.BidiStreamingClient[pb.QueueRequest, pb.QueueResponse], error) {
-	return &scriptedStream[pb.QueueRequest, pb.QueueResponse]{ctx: ctx, n: b.next(), answer: b.queue, recv: make(chan *pb.QueueResponse, 16)}, nil
+	s := &scriptedStream[pb.QueueRequest, pb.QueueResponse]{ctx: ctx, n: b.next(), answer: b.queue, recv: make(chan *pb.QueueResponse, 16)}
+	b.lock.Lock()
+	if b.queues == nil {
+		b.queues = map[int]*scriptedStream[pb.QueueRequest, pb.QueueResponse]{}
+	}
+	b.queues[s.n] = s
+	b.lock.Unlock()
+	return s, nil
 }
 
 func (b *fakeBroker) StorageConnect(ctx context.Context, _ ...grpc.CallOption) (grpc.BidiStreamingClient[pb.StorageRequest, pb.StorageResponse], error) {
@@ -96,17 +113,43 @@ func storageStatus(req *pb.StorageRequest, code pb.StatusCode) *pb.StorageRespon
 		Response: &pb.StorageResponse_Status{Status: &pb.StatusResponse{Code: code, Message: code.String()}}}
 }
 
-// A leader switch stalls a batch enqueue instead of failing it: the client
-// reconnects, the new leader refuses the setup once more while it takes over,
-// and the enqueue is then repeated with the request id of the first attempt.
-func TestQueueClientRepeatsAnEnqueueAcrossALeaderSwitch(t *testing.T) {
+// lostEvents collects the losses a Client reports.
+type lostEvents struct {
+	lock sync.Mutex
+	evs  []ConnectionLost
+}
+
+func (l *lostEvents) on(c *Client) *Client {
+	c.OnConnectionLost(func(ev ConnectionLost) {
+		l.lock.Lock()
+		defer l.lock.Unlock()
+		l.evs = append(l.evs, ev)
+	})
+	return c
+}
+
+func (l *lostEvents) all() []ConnectionLost {
+	l.lock.Lock()
+	defer l.lock.Unlock()
+	return append([]ConnectionLost(nil), l.evs...)
+}
+
+func pullResponse(req *pb.QueueRequest, ids ...uint64) *pb.QueueResponse {
+	items := make([]*pb.Item, len(ids))
+	for i, id := range ids {
+		items[i] = &pb.Item{Id: id}
+	}
+	return &pb.QueueResponse{CorrelationId: req.CorrelationId, Response: &pb.QueueResponse_Pull{Pull: &pb.PullResponse{Items: items}}}
+}
+
+// An enqueue refused while leadership moves, on a stream that holds no item,
+// is repeated on a new stream with the request id the client set on the first
+// attempt, and the caller sees no error; the loss is reported once.
+func TestQueueClientRepeatsAnEnqueueWhileHoldingNothing(t *testing.T) {
 	var ids [][]byte
 	b := &fakeBroker{queue: func(stream int, req *pb.QueueRequest) *pb.QueueResponse {
 		switch cmd := req.Command.(type) {
 		case *pb.QueueRequest_Setup:
-			if stream == 2 {
-				return queueStatus(req, pb.StatusCode_STATUS_CODE_LEADER_SWITCH)
-			}
 			return queueStatus(req, pb.StatusCode_STATUS_CODE_OK)
 		case *pb.QueueRequest_BatchEnqueue:
 			ids = append(ids, cmd.BatchEnqueue.RequestId)
@@ -118,7 +161,8 @@ func TestQueueClientRepeatsAnEnqueueAcrossALeaderSwitch(t *testing.T) {
 		}
 		return queueStatus(req, pb.StatusCode_STATUS_CODE_ERROR)
 	}}
-	qc, err := b.client().OpenQueue(t.Context(), "q")
+	var lost lostEvents
+	qc, err := lost.on(b.client()).OpenQueue(t.Context(), "q")
 	if err != nil {
 		t.Fatalf("open: %v", err)
 	}
@@ -128,19 +172,21 @@ func TestQueueClientRepeatsAnEnqueueAcrossALeaderSwitch(t *testing.T) {
 	if err != nil {
 		t.Fatalf("batch enqueue: %v", err)
 	}
-	if len(resp.Ids) != 1 || resp.Ids[0] != 7 {
-		t.Fatalf("ids = %v, want [7]", resp.Ids)
-	}
-	if got := b.opened(); got != 3 {
-		t.Fatalf("streams opened = %d, want 3", got)
+	if len(resp.Ids) != 1 || resp.Ids[0] != 7 || b.opened() != 2 {
+		t.Fatalf("ids = %v with %d streams opened, want [7] on a reopened stream", resp.Ids, b.opened())
 	}
 	if len(ids) != 2 || len(ids[0]) != 16 || !bytes.Equal(ids[0], ids[1]) {
 		t.Fatalf("request ids = %x, want one generated id sent on both attempts", ids)
 	}
+	evs := lost.all()
+	if len(evs) != 1 || evs[0].Queue != "q" || evs[0].LeasesLost || !errors.Is(evs[0].Err, ErrLeaderSwitch) {
+		t.Fatalf("lost events = %+v, want one leader switch of queue q without lost leases", evs)
+	}
 }
 
-// A stream that breaks under a pull is reopened and the pull repeated.
-func TestQueueClientRepeatsAfterABrokenStream(t *testing.T) {
+// A pull whose stream breaks while the stream holds no item is repeated: the
+// items the broker may have handed out on it are free again.
+func TestQueueClientRepeatsAPullWhileHoldingNothing(t *testing.T) {
 	b := &fakeBroker{queue: func(stream int, req *pb.QueueRequest) *pb.QueueResponse {
 		switch req.Command.(type) {
 		case *pb.QueueRequest_Setup:
@@ -149,8 +195,7 @@ func TestQueueClientRepeatsAfterABrokenStream(t *testing.T) {
 			if stream == 1 {
 				return nil
 			}
-			return &pb.QueueResponse{CorrelationId: req.CorrelationId,
-				Response: &pb.QueueResponse_Pull{Pull: &pb.PullResponse{Items: []*pb.Item{{Id: 3}}}}}
+			return pullResponse(req, 3)
 		}
 		return queueStatus(req, pb.StatusCode_STATUS_CODE_ERROR)
 	}}
@@ -164,38 +209,202 @@ func TestQueueClientRepeatsAfterABrokenStream(t *testing.T) {
 	if err != nil {
 		t.Fatalf("pull: %v", err)
 	}
-	if len(resp.Items) != 1 || resp.Items[0].Id != 3 {
-		t.Fatalf("items = %v, want item 3", resp.Items)
+	if len(resp.Items) != 1 || resp.Items[0].Id != 3 || b.opened() != 2 {
+		t.Fatalf("items = %v with %d streams opened, want item 3 on a reopened stream", resp.Items, b.opened())
 	}
 }
 
-// The stall ends with the context the client was opened with, reporting the
-// leader switch as Unavailable rather than as an internal error.
-func TestQueueClientStopsRepeatingWhenItsContextEnds(t *testing.T) {
+// A stream lost while it holds pulled items fails the operation with
+// ErrLeasesLost, which also names the loss, and reports the lost leases; the
+// next operation runs on a new stream, which holds nothing. Items settled
+// before the loss do not count.
+func TestQueueClientReportsLostLeasesWhileHoldingItems(t *testing.T) {
+	for _, settleAll := range []bool{false, true} {
+		t.Run(fmt.Sprintf("settled all=%v", settleAll), func(t *testing.T) {
+			noops := 0
+			b := &fakeBroker{queue: func(stream int, req *pb.QueueRequest) *pb.QueueResponse {
+				switch cmd := req.Command.(type) {
+				case *pb.QueueRequest_Setup:
+					return queueStatus(req, pb.StatusCode_STATUS_CODE_OK)
+				case *pb.QueueRequest_Pull:
+					return pullResponse(req, 1, 2)
+				case *pb.QueueRequest_Commit:
+					return &pb.QueueResponse{CorrelationId: req.CorrelationId,
+						Response: &pb.QueueResponse_Commit{Commit: &pb.CommitResponse{Ret: int32(len(cmd.Commit.Ids))}}}
+				case *pb.QueueRequest_Noop:
+					noops++
+					if stream == 1 {
+						return nil
+					}
+					return queueStatus(req, pb.StatusCode_STATUS_CODE_OK)
+				}
+				return queueStatus(req, pb.StatusCode_STATUS_CODE_ERROR)
+			}}
+			var lost lostEvents
+			qc, err := lost.on(b.client()).OpenQueue(t.Context(), "q")
+			if err != nil {
+				t.Fatalf("open: %v", err)
+			}
+			defer func() { _ = qc.Close() }()
+
+			if _, err := qc.Pull(&pb.PullRequest{BatchSize: 2}); err != nil {
+				t.Fatalf("pull: %v", err)
+			}
+			settle := []uint64{1}
+			if settleAll {
+				settle = []uint64{1, 2}
+			}
+			if _, err := qc.Commit(&pb.CommitRequest{Ids: settle}); err != nil {
+				t.Fatalf("commit: %v", err)
+			}
+
+			err = qc.Noop()
+			evs := lost.all()
+			if settleAll {
+				if err != nil || noops != 2 {
+					t.Fatalf("noop error = %v after %d attempts, want it repeated once the stream held nothing", err, noops)
+				}
+				if len(evs) != 1 || evs[0].LeasesLost {
+					t.Fatalf("lost events = %+v, want one without lost leases", evs)
+				}
+				return
+			}
+			if !errors.Is(err, ErrLeasesLost) || !errors.Is(err, ErrStreamBroken) || status.Code(err) != codes.Unavailable {
+				t.Fatalf("noop error = %v, want ErrLeasesLost and ErrStreamBroken, Unavailable", err)
+			}
+			if noops != 1 {
+				t.Fatalf("noops sent = %d, want 1: not repeated", noops)
+			}
+			if len(evs) != 1 || !evs[0].LeasesLost {
+				t.Fatalf("lost events = %+v, want one with lost leases", evs)
+			}
+			if err := qc.Noop(); err != nil {
+				t.Fatalf("next noop: %v", err)
+			}
+			if b.opened() != 2 {
+				t.Fatalf("streams opened = %d, want 2", b.opened())
+			}
+		})
+	}
+}
+
+// A stream that breaks while no operation waits on it, holding items, fails
+// the next operation with ErrLeasesLost, once; the one after runs on a new
+// stream.
+func TestQueueClientReportsLeasesLostWhileIdle(t *testing.T) {
+	b := &fakeBroker{queue: func(_ int, req *pb.QueueRequest) *pb.QueueResponse {
+		switch req.Command.(type) {
+		case *pb.QueueRequest_Setup, *pb.QueueRequest_Noop:
+			return queueStatus(req, pb.StatusCode_STATUS_CODE_OK)
+		case *pb.QueueRequest_PullSingle:
+			return &pb.QueueResponse{CorrelationId: req.CorrelationId,
+				Response: &pb.QueueResponse_PullSingle{PullSingle: &pb.PullSingleResponse{Item: &pb.Item{Id: 4}}}}
+		}
+		return queueStatus(req, pb.StatusCode_STATUS_CODE_ERROR)
+	}}
+	var lost lostEvents
+	qc, err := lost.on(b.client()).OpenQueue(t.Context(), "q")
+	if err != nil {
+		t.Fatalf("open: %v", err)
+	}
+	defer func() { _ = qc.Close() }()
+
+	if _, err := qc.PullSingle(&pb.PullSingleRequest{}); err != nil {
+		t.Fatalf("pull: %v", err)
+	}
+	b.breakQueue(1)
+	deadline := time.Now().Add(2 * time.Second)
+	for {
+		qc.lock.Lock()
+		dead := qc.cur.err != nil
+		qc.lock.Unlock()
+		if dead || time.Now().After(deadline) {
+			break
+		}
+		time.Sleep(5 * time.Millisecond)
+	}
+	if err := qc.Noop(); !errors.Is(err, ErrLeasesLost) {
+		t.Fatalf("noop error = %v, want ErrLeasesLost", err)
+	}
+	if err := qc.Noop(); err != nil {
+		t.Fatalf("next noop: %v", err)
+	}
+	if evs := lost.all(); len(evs) != 1 || !evs[0].LeasesLost {
+		t.Fatalf("lost events = %+v, want one with lost leases", evs)
+	}
+}
+
+// A reopen the broker refuses while no replica leads yet is retried with a
+// backoff, and the operation, as the stream held nothing, is repeated: the
+// caller waits for the new leader instead of failing.
+func TestQueueClientRetriesARefusedReopen(t *testing.T) {
+	var lock sync.Mutex
+	noops := map[int]int{}
 	b := &fakeBroker{queue: func(stream int, req *pb.QueueRequest) *pb.QueueResponse {
-		if _, ok := req.Command.(*pb.QueueRequest_Setup); ok && stream == 1 {
+		switch req.Command.(type) {
+		case *pb.QueueRequest_Setup:
+			if stream == 2 || stream == 3 {
+				return queueStatus(req, pb.StatusCode_STATUS_CODE_LEADER_SWITCH)
+			}
+			return queueStatus(req, pb.StatusCode_STATUS_CODE_OK)
+		case *pb.QueueRequest_Noop:
+			lock.Lock()
+			noops[stream]++
+			lock.Unlock()
+			if stream == 1 {
+				return nil
+			}
 			return queueStatus(req, pb.StatusCode_STATUS_CODE_OK)
 		}
-		return queueStatus(req, pb.StatusCode_STATUS_CODE_LEADER_SWITCH)
+		return queueStatus(req, pb.StatusCode_STATUS_CODE_ERROR)
 	}}
-	ctx, cancel := context.WithTimeout(t.Context(), 500*time.Millisecond)
-	defer cancel()
-	qc, err := b.client().OpenQueue(ctx, "q")
+	qc, err := b.client().OpenQueue(t.Context(), "q")
+	if err != nil {
+		t.Fatalf("open: %v", err)
+	}
+	defer func() { _ = qc.Close() }()
+
+	if err := qc.Noop(); err != nil {
+		t.Fatalf("noop: %v, want it to wait out the refused reopens", err)
+	}
+	lock.Lock()
+	defer lock.Unlock()
+	if got := b.opened(); got != 4 || noops[1] != 1 || noops[4] != 1 {
+		t.Fatalf("streams opened = %d, noops per stream %v; want two refused reopens and the noop repeated once", got, noops)
+	}
+}
+
+// A reopen that finds no leader within the reopen window the client was opened
+// with fails the operation with ErrLeaderSwitch.
+func TestQueueClientGivesUpAReopenAfterTheWindow(t *testing.T) {
+	b := &fakeBroker{queue: func(stream int, req *pb.QueueRequest) *pb.QueueResponse {
+		switch req.Command.(type) {
+		case *pb.QueueRequest_Setup:
+			if stream > 1 {
+				return queueStatus(req, pb.StatusCode_STATUS_CODE_LEADER_SWITCH)
+			}
+			return queueStatus(req, pb.StatusCode_STATUS_CODE_OK)
+		case *pb.QueueRequest_Noop:
+			return nil
+		}
+		return queueStatus(req, pb.StatusCode_STATUS_CODE_ERROR)
+	}}
+	qc, err := b.client().OpenQueue(t.Context(), "q", WithReopenWindow(500*time.Millisecond))
 	if err != nil {
 		t.Fatalf("open: %v", err)
 	}
 	defer func() { _ = qc.Close() }()
 
 	start := time.Now()
-	_, err = qc.Enqueue(&pb.EnqueueRequest{Item: &pb.InputItem{Value: []byte("x")}})
+	err = qc.Noop()
 	if !errors.Is(err, ErrLeaderSwitch) || status.Code(err) != codes.Unavailable {
-		t.Fatalf("enqueue error = %v, want ErrLeaderSwitch with code Unavailable", err)
+		t.Fatalf("noop error = %v, want ErrLeaderSwitch with code Unavailable", err)
 	}
-	if elapsed := time.Since(start); elapsed < 400*time.Millisecond || elapsed > 2*time.Second {
-		t.Fatalf("enqueue gave up after %v, want it to stall until the context ended", elapsed)
+	if elapsed := time.Since(start); elapsed < 400*time.Millisecond || elapsed > 3*time.Second {
+		t.Fatalf("gave up after %v, want about the reopen window", elapsed)
 	}
-	if b.opened() < 2 {
-		t.Fatalf("streams opened = %d, want reconnects while stalled", b.opened())
+	if b.opened() < 3 {
+		t.Fatalf("streams opened = %d, want several reopen attempts", b.opened())
 	}
 }
 
@@ -247,15 +456,17 @@ func TestQueueClientKeepsACallerRequestID(t *testing.T) {
 	}
 }
 
-// A storage command refused while leadership moved is repeated, and a key
-// listing whose stream broke midway starts over on the new stream.
-func TestStorageClientRepeatsAcrossALeaderSwitch(t *testing.T) {
+// A storage command refused while leadership moved, and a key listing whose
+// stream broke midway, are repeated while the stream held no lock: the
+// listing starts over. Once the stream holds a lock, a loss fails the command
+// with ErrLeasesLost.
+func TestStorageClientRepeatsUnlessHoldingLocks(t *testing.T) {
 	b := &fakeBroker{storage: func(stream int, req *pb.StorageRequest) *pb.StorageResponse {
 		switch req.Command.(type) {
 		case *pb.StorageRequest_Setup:
 			return storageStatus(req, pb.StatusCode_STATUS_CODE_OK)
 		case *pb.StorageRequest_Set:
-			if stream == 1 {
+			if stream == 1 || stream == 3 {
 				return storageStatus(req, pb.StatusCode_STATUS_CODE_LEADER_SWITCH)
 			}
 			return storageStatus(req, pb.StatusCode_STATUS_CODE_OK)
@@ -268,17 +479,21 @@ func TestStorageClientRepeatsAcrossALeaderSwitch(t *testing.T) {
 			}
 			return &pb.StorageResponse{CorrelationId: req.CorrelationId,
 				Response: &pb.StorageResponse_GetKeysResponse{GetKeysResponse: &pb.StorageGetKeysResponse{Keys: [][]byte{[]byte("b")}}}}
+		case *pb.StorageRequest_LockAnyWithId:
+			return &pb.StorageResponse{CorrelationId: req.CorrelationId,
+				Response: &pb.StorageResponse_DataResponse{DataResponse: &pb.StorageDataResponse{Id: 5}}}
 		}
 		return storageStatus(req, pb.StatusCode_STATUS_CODE_ERROR)
 	}}
-	sc, err := b.client().OpenStorage(t.Context(), "s")
+	var lost lostEvents
+	sc, err := lost.on(b.client()).OpenStorage(t.Context(), "s")
 	if err != nil {
 		t.Fatalf("open: %v", err)
 	}
 	defer func() { _ = sc.Close() }()
 
 	if err := sc.Set(&pb.StorageSetRequest{Key: []byte("k")}); err != nil {
-		t.Fatalf("set: %v", err)
+		t.Fatalf("set: %v, want it repeated", err)
 	}
 	keys, err := sc.GetKeys(&pb.StorageGetKeysRequest{})
 	if err != nil {
@@ -287,7 +502,59 @@ func TestStorageClientRepeatsAcrossALeaderSwitch(t *testing.T) {
 	if len(keys) != 2 || string(keys[0]) != "a" || string(keys[1]) != "b" {
 		t.Fatalf("keys = %q, want [a b] from one complete listing", keys)
 	}
-	if got := b.opened(); got != 3 {
-		t.Fatalf("streams opened = %d, want 3", got)
+	if _, err := sc.LockAny(&pb.StorageLockAnyWithIdRequest{}); err != nil {
+		t.Fatalf("lock: %v", err)
+	}
+	if err := sc.Set(&pb.StorageSetRequest{Key: []byte("k")}); !errors.Is(err, ErrLeasesLost) || !errors.Is(err, ErrLeaderSwitch) {
+		t.Fatalf("set while holding a lock: %v, want ErrLeasesLost", err)
+	}
+	if err := sc.Set(&pb.StorageSetRequest{Key: []byte("k")}); err != nil {
+		t.Fatalf("next set: %v", err)
+	}
+	evs := lost.all()
+	if len(evs) != 3 || evs[0].LeasesLost || evs[1].LeasesLost || !evs[2].LeasesLost || evs[2].Storage != "s" {
+		t.Fatalf("lost events = %+v, want two without and one with lost leases, of storage s", evs)
+	}
+}
+
+// With a zero reopen window an operation is neither repeated nor waits for a
+// reopen: it fails with the loss it met, and the next one reopens the stream
+// once.
+func TestQueueClientWithoutAReopenWindowNeverRepeats(t *testing.T) {
+	noops := 0
+	b := &fakeBroker{queue: func(stream int, req *pb.QueueRequest) *pb.QueueResponse {
+		switch req.Command.(type) {
+		case *pb.QueueRequest_Setup:
+			return queueStatus(req, pb.StatusCode_STATUS_CODE_OK)
+		case *pb.QueueRequest_Noop:
+			noops++
+			if stream == 1 {
+				return queueStatus(req, pb.StatusCode_STATUS_CODE_LEADER_SWITCH)
+			}
+			return queueStatus(req, pb.StatusCode_STATUS_CODE_OK)
+		}
+		return queueStatus(req, pb.StatusCode_STATUS_CODE_ERROR)
+	}}
+	qc, err := b.client().OpenQueue(t.Context(), "q", WithReopenWindow(0))
+	if err != nil {
+		t.Fatalf("open: %v", err)
+	}
+	defer func() { _ = qc.Close() }()
+
+	if err := qc.Noop(); !errors.Is(err, ErrLeaderSwitch) || noops != 1 {
+		t.Fatalf("noop error = %v after %d attempts, want ErrLeaderSwitch after one", err, noops)
+	}
+	if err := qc.Noop(); err != nil || b.opened() != 2 {
+		t.Fatalf("next noop error = %v with %d streams opened, want it on a reopened stream", err, b.opened())
+	}
+}
+
+func TestReopenWindowOfTakesTheLastOption(t *testing.T) {
+	if got := reopenWindowOf(nil); got != DefaultReopenWindow {
+		t.Fatalf("default window = %v, want %v", got, DefaultReopenWindow)
+	}
+	opts := []grpc.CallOption{WithReopenWindow(time.Second), grpc.WaitForReady(true), WithReopenWindow(-time.Second)}
+	if got := reopenWindowOf(opts); got != 0 {
+		t.Fatalf("window = %v, want 0: the last option, negative clamped", got)
 	}
 }
